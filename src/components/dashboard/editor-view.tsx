@@ -776,10 +776,8 @@ export function EditorView({
       {/* Security Status Alert */}
       {(typingMetrics.warnings > 0 || securityAlerts.length > 0) && (
         <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
-          <UIAlertTitle className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            {t('securityStatus')}
-          </UIAlertTitle>
+          <Shield className="h-4 w-4" />
+          <UIAlertTitle>{t('securityStatus')}</UIAlertTitle>
           <UIDescription>
             <p>{t('warnings', { count: typingMetrics.warnings })} {typingMetrics.isBlocked && `- ${t('editorLocked')}`}</p>
             {securityAlerts.length > 0 && (
