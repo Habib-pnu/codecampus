@@ -36,7 +36,16 @@ interface FilePreparationResponse {
   error?: string | null; 
 }
 
-const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8080';
+const getWebSocketUrl = () => {
+  if (typeof window === 'undefined') {
+    return 'ws://localhost:8080';
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const hostname = window.location.hostname;
+  return `${protocol}://${hostname}:8080`;
+};
+
+const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || getWebSocketUrl();
 
 // Security Configuration
 const SECURITY_CONFIG = {

@@ -34,16 +34,16 @@ interface FilePreparationResponse {
   error?: string | null;
 }
 
-type EditorViewProps = Pick<DashboardState,
-  "code" | "codeTitle" | "currentSnippetId" |
-  "savedCodes" | "currentUser" | "labs" | "currentExercise" | "isCompiling" | "isAwaitingAIResponse"
- > &
-  Pick<DashboardActions,
-  "setCode" | "setCodeTitle" | "setCurrentSnippetId" |
-  "handleSaveOrUpdateSnippet" | "handleNewSnippet" | "handleLoadCode" | "handleDeleteSnippet" | "handleRenameSnippetTitle" | "handleUseSnippetAsWeekTarget" | "handleSubmitExercise" | "setIsAwaitingAIResponse"
-  >;
+const getWebSocketUrl = () => {
+  if (typeof window === 'undefined') {
+    return 'ws://localhost:8080';
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const hostname = window.location.hostname;
+  return `${protocol}://${hostname}:8080`;
+};
 
-const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8080';
+const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || getWebSocketUrl();
 
 // Security Configuration
 const SECURITY_CONFIG = {
@@ -776,8 +776,10 @@ export function EditorView({
       {/* Security Status Alert */}
       {(typingMetrics.warnings > 0 || securityAlerts.length > 0) && (
         <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
-          <Shield className="h-4 w-4" />
-          <UIAlertTitle>{t('securityStatus')}</UIAlertTitle>
+          <UIAlertTitle className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            {t('securityStatus')}
+          </UIAlertTitle>
           <UIDescription>
             <p>{t('warnings', { count: typingMetrics.warnings })} {typingMetrics.isBlocked && `- ${t('editorLocked')}`}</p>
             {securityAlerts.length > 0 && (
