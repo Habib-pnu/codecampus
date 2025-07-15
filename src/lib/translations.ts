@@ -32,6 +32,7 @@ export const translations = {
   fullNamePlaceholder: { en: "Enter your full name", th: "กรอกชื่อและนามสกุล" },
   processing: { en: "Processing...", th: "กำลังดำเนินการ..." },
   cancelButton: { en: "Cancel", th: "ยกเลิก" },
+  closeButton: { en: "Close", th: "ปิด" },
 
   // Toast Messages (Auth)
   errorToast: { en: "Error", th: "ข้อผิดพลาด" },
@@ -46,6 +47,11 @@ export const translations = {
   invalidCredentialsError: { en: "Incorrect username/email or password", th: "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง" },
   loginSuccessTitle: { en: "Login Successful", th: "เข้าสู่ระบบสำเร็จ" },
   unexpectedError: { en: "An unexpected error occurred. Please try again.", th: "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง" },
+  loginFailedTitle: { en: "Login Failed", th: "เข้าสู่ระบบไม่สำเร็จ" },
+  loginFailedDescription: { en: "The username/email or password you entered is incorrect. Please try again.", th: "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านที่คุณป้อนไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง" },
+  registrationFailedTitle: { en: "Registration Failed", th: "การลงทะเบียนล้มเหลว" },
+  registrationFailedDescription: { en: "An error occurred during registration. Please review the form and try again.", th: "เกิดข้อผิดพลาดระหว่างการลงทะเบียน กรุณาตรวจสอบข้อมูลในฟอร์มและลองใหม่อีกครั้ง" },
+  newInstitutionNameRequired: { en: "New institution name is required.", th: "จำเป็นต้องระบุชื่อสถาบันใหม่" },
 
   // Forgot Password Dialog
   forgotPasswordTitle: { en: "Forgot Password", th: "ลืมรหัสผ่าน" },
@@ -413,6 +419,10 @@ export const translations = {
   targetDescRequiredError: { en: "Target code name/description is required.", th: "ต้องระบุชื่อ/คำอธิบายโค้ดเป้าหมาย" },
   similarityRangeError: { en: "Similarity value must be between 0 and 100.", th: "ค่าความคล้ายคลึงต้องอยู่ระหว่าง 0 ถึง 100" },
   pointsPositiveError: { en: "Points must be a positive number.", th: "คะแนนต้องเป็นจำนวนบวก" },
+  enforcedStatement: { en: "Enforced Statement", th: "บังคับใช้คำสั่ง" },
+  none: { en: "None", th: "ไม่มี" },
+  requiredOutputSimilarityLabel: { en: "Required Output Similarity (%)", th: "ความคล้ายคลึงของผลลัพธ์ที่ต้องการ (%)" },
+
 
   // Lecturer Panel
   accessDenied: { en: "Access Denied. Only lecturers, institution admins, or global admins can access this panel.", th: "การเข้าถึงถูกปฏิเสธ เฉพาะผู้สอน ผู้ดูแลสถาบัน หรือผู้ดูแลระบบเท่านั้นที่สามารถเข้าถึงหน้านี้ได้" },
@@ -648,3 +658,5 @@ export const translations = {
     reopenInfo: { en: "Replying will reopen this ticket.", th: "การตอบกลับจะเปิดตั๋วนี้อีกครั้ง" },
   }
 };
+
+    
