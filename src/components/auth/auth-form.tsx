@@ -126,15 +126,15 @@ export function AuthForm({ mode }: AuthFormProps) {
       // --- Pre-flight validation checks ---
       if (!usernameInput.trim() || !fullNameInput.trim() || !emailInput.trim() || !password.trim()) {
         const message = t('fillAllFieldsError');
- setRegistrationErrorMessage(message);
- setShowRegistrationErrorDialog(true);
+        setRegistrationErrorMessage(message);
+        setShowRegistrationErrorDialog(true);
         setIsLoading(false);
- return;
+        return;
       }
        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.trim())) {
         const message = t('validEmailError');
- setRegistrationErrorMessage(message);
- setShowRegistrationErrorDialog(true);
+        setRegistrationErrorMessage(message);
+        setShowRegistrationErrorDialog(true);
         setIsLoading(false);
         return;
       }
@@ -207,7 +207,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
     } else { // Login mode
       if (!usernameInput.trim() || !password.trim()) {
-        toast({ title: t('errorToast'), description: t('fillAllFieldsError', { field: '' }), variant: "destructive" });
+        toast({ title: t('errorToast'), description: t('loginFieldsError'), variant: "destructive" });
         setIsLoading(false);
         return;
       }
