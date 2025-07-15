@@ -48,8 +48,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         }
     }
     
-    let text = translationNode[language] || translationNode['en'] || key;
+    let text;
+    if (typeof translationNode === 'object' && translationNode !== null) {
+      text = translationNode[language] || translationNode['en'] || key;
+    } else {
+      text = translationNode;
+    }
 
+    if (typeof text !== 'string') {
+        text = key;
+    }
+    
     if (params) {
         Object.keys(params).forEach(paramKey => {
             const regex = new RegExp(`{${paramKey}}`, 'g');
