@@ -105,7 +105,8 @@ export function AuthForm({ mode }: AuthFormProps) {
       return JSON.parse(usersJson) as StoredUser[];
     } catch (error: any) {
       console.error("Error reading stored users for auth:", error);
-      toast({ title: "Data Error", description: `Could not read user data. ${error.message}`, variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast({ title: "Data Error", description: `Could not read user data. ${errorMessage}`, variant: "destructive" });
       return [];
     }
   };

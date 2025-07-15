@@ -221,13 +221,13 @@ function useDashboardData() {
                       if (errorJson.error) specificError += ` Details: ${errorJson.error}`;
                       else if (language === 'cpp' && errorJson.compileError) specificError += ` Details: ${errorJson.compileError}`;
                       else if (errorJson.runtimeError) specificError += ` Details: ${errorJson.runtimeError}`;
-                  } catch (e: any) { specificError += ` Raw response: ${responseText.substring(0, 200)}. Error parsing response: ${e.message}`; }
+                  } catch (e) { specificError += ` Raw response: ${responseText.substring(0, 200)}.`; }
               }
               toast({ title: "Execution Failed", description: specificError.substring(0,150), variant: "destructive" });
               return { output: null, stderr: null, compileError: language === 'cpp' ? specificError : null, runtimeError: specificError, networkError: specificError, error: specificError };
           }
           if (!contentType || !contentType.toLowerCase().includes("application/json")) {
-              const networkErrorMsg = `Network Error: Unexpected response format from local API (expected JSON, got ${contentType || 'unknown'}). Response: ${responseText.substring(0,200)}...`;
+              const networkErrorMsg = `Network Error: Unexpected response format from local API (expected JSON, got ${contentType || 'unknown'}). Raw response: ${responseText.substring(0,200)}...`;
               toast({ title: "Network Error", description: networkErrorMsg, variant: "destructive" });
               return { output: null, stderr: null, compileError: null, runtimeError: null, networkError: networkErrorMsg };
           }
