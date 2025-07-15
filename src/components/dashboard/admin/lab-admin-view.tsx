@@ -18,7 +18,7 @@ import type { Lab, LabChallenge, LabTargetCode, CodeSnippet, SupportedLanguage, 
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription as UIDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription as UIDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { useLanguage } from '@/context/language-context';
 import { translateContent } from '@/ai/flows/translate-content-flow';
 
@@ -671,13 +671,22 @@ export function LabAdminView({
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             {(typingMetrics.warnings > 0 || securityAlerts.length > 0) && (
-                <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
-                <Shield className="h-4 w-4" />
+              <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
+                <UIAlertTitle className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  {t('securityStatus')}
+                </UIAlertTitle>
                 <UIDescription>
-                    <strong>{t('securityStatus')}:</strong> {t('warnings', { count: typingMetrics.warnings })}
-                    {typingMetrics.isBlocked && ` ${t('editorLocked')}`}
+                  <p>{t('warnings', { count: typingMetrics.warnings })} {typingMetrics.isBlocked && `- ${t('editorLocked')}`}</p>
+                  {securityAlerts.length > 0 && (
+                    <ol className="text-xs mt-2 space-y-1 list-decimal list-inside font-mono">
+                      {[...new Set(securityAlerts.slice(-2))].map((alert, i) => (
+                        <li key={i}>{alert}</li>
+                      ))}
+                    </ol>
+                  )}
                 </UIDescription>
-                </Alert>
+              </Alert>
             )}
             <div>
                 <Label htmlFor="target-code-source-type-dialog">{t('sourceType')}</Label>

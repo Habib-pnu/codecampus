@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadIcon } from '@/components/icons/LoadIcon';
-import { Alert, AlertDescription as UIDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription as UIDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { useLanguage } from '@/context/language-context';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { assistWithCode } from '@/ai/flows/code-assistant-flow';
@@ -775,22 +775,17 @@ export function EditorView({
     <div className="p-0 h-full flex flex-col gap-4">
       {/* Security Status Alert */}
       {(typingMetrics.warnings > 0 || securityAlerts.length > 0) && (
-        <Alert className={cn(
-          "mb-4",
-          typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50"
-        )}>
-          <Shield className="h-4 w-4" />
+        <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
+          <UIAlertTitle className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            {t('securityStatus')}
+          </UIAlertTitle>
           <UIDescription>
-            <div className="flex justify-between items-center">
-              <div>
-                <strong>{t('securityStatus')}:</strong> {t('warnings', { count: typingMetrics.warnings })}
-                {typingMetrics.isBlocked && ` - ${t('editorLocked')}`}
-              </div>
-            </div>
+            <p>{t('warnings', { count: typingMetrics.warnings })} {typingMetrics.isBlocked && `- ${t('editorLocked')}`}</p>
             {securityAlerts.length > 0 && (
-              <ol className="text-xs mt-2 space-y-1 list-decimal list-inside">
+              <ol className="text-xs mt-2 space-y-1 list-decimal list-inside font-mono">
                 {[...new Set(securityAlerts.slice(-2))].map((alert, i) => (
-                  <li key={i} className="font-mono">{alert}</li>
+                  <li key={i}>{alert}</li>
                 ))}
               </ol>
             )}
