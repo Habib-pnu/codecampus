@@ -788,11 +788,11 @@ export function EditorView({
               </div>
             </div>
             {securityAlerts.length > 0 && (
-              <div className="text-xs mt-2 space-y-1">
+              <ol className="text-xs mt-2 space-y-1 list-decimal list-inside">
                 {[...new Set(securityAlerts.slice(-2))].map((alert, i) => (
-                  <div key={i} className="font-mono">{alert}</div>
+                  <li key={i} className="font-mono">{alert}</li>
                 ))}
-              </div>
+              </ol>
             )}
           </UIDescription>
         </Alert>
