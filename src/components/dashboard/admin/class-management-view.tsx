@@ -1637,7 +1637,7 @@ export function ClassManagementView({
                                     </div>
                                     {editingInstitution?.id === inst.id && (
                                     <div className="flex self-end gap-1">
-                                        <Button size="sm" onClick={() => { handleUpdateInstitution({ ...editingInstitution, name: tempInstitutionName, pricePerStudent: tempInstitutionPrice }); setEditingInstitution(null); }}>{t('save')}</Button>
+                                        <Button size="sm" onClick={() => { if(editingInstitution) handleUpdateInstitution({ ...editingInstitution, name: tempInstitutionName, pricePerStudent: tempInstitutionPrice }); setEditingInstitution(null); }}>{t('save')}</Button>
                                         <Button size="sm" variant="ghost" onClick={() => setEditingInstitution(null)}>{t('cancelButton')}</Button>
                                     </div>
                                     )}
@@ -2281,11 +2281,11 @@ export function ClassManagementView({
         <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{t('submissionDetails')}</DialogTitle>
-            <DialogDescription>
+            <ModalDescription>
               {t('student')}: {viewingSubmission?.student.fullName} ({viewingSubmission?.student.username})
               <br/>
               {t('challengeLabel')}: {getLocalizedText(viewingSubmission?.challenge.title)}
-            </DialogDescription>
+            </ModalDescription>
           </DialogHeader>
           {viewingSubmission && (
             <ScrollArea className="flex-1 pr-4 -mr-2">
