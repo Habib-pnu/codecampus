@@ -221,7 +221,7 @@ function useDashboardData() {
                       if (errorJson.error) specificError += ` Details: ${errorJson.error}`;
                       else if (language === 'cpp' && errorJson.compileError) specificError += ` Details: ${errorJson.compileError}`;
                       else if (errorJson.runtimeError) specificError += ` Details: ${errorJson.runtimeError}`;
-                  } catch (e) { specificError += ` Raw response: ${responseText.substring(0, 200)}`; }
+                  } catch (e: any) { specificError += ` Raw response: ${responseText.substring(0, 200)}. Error parsing response: ${e.message}`; }
               }
               toast({ title: "Execution Failed", description: specificError.substring(0,150), variant: "destructive" });
               return { output: null, stderr: null, compileError: language === 'cpp' ? specificError : null, runtimeError: specificError, networkError: specificError, error: specificError };
@@ -1148,7 +1148,7 @@ function useDashboardData() {
     if ((['cpp', 'python', 'javascript', 'react'].includes(challengeDetails.language)) && !meetsRequirements) {
       try {
           assessmentResult = await assessCodeSkill({ code: studentCode, language: challengeDetails.language });
-      } catch (e) {
+      } catch (e: any) {
           console.error("AI assessment failed during submission:", e);
           toast({ title: "AI Feedback Unavailable", description: "Could not get AI feedback for this submission.", variant: "default" });
       }
@@ -1379,9 +1379,9 @@ function useDashboardData() {
           }
           return req;
       }));
-    } catch(e) {
+    } catch(e: any) {
         console.error("Failed to send admin chat message:", e);
-        toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
+        toast({ title: "Error", description: e.message || "Failed to send message.", variant: "destructive" });
     }
   };
 
@@ -1444,9 +1444,9 @@ function useDashboardData() {
           }
           return cg;
       }));
-    } catch(e) {
+    } catch(e: any) {
       console.error("Failed to send assistance message:", e);
-        toast({ title: "Error", description: t('unexpectedError'), variant: "destructive" })
+        toast({ title: "Error", description: e.message || t('unexpectedError'), variant: "destructive" })
     }
   };
 
@@ -1492,7 +1492,8 @@ function useDashboardData() {
       const stored = localStorage.getItem(CLASS_GROUPS_STORAGE_KEY);
       if (stored) setClassGroups(JSON.parse(stored));
       else setClassGroups(initialMockClassGroups);
-    } catch (e) {
+    } catch (e: any) {
+      toast({ title: "Data Loading Error", description: `Could not load class data. ${e.message}`, variant: "destructive" });
       setClassGroups(initialMockClassGroups);
     }
 
@@ -1500,7 +1501,8 @@ function useDashboardData() {
       const stored = localStorage.getItem(LABS_STORAGE_KEY);
       if (stored) setLabs(JSON.parse(stored));
       else setLabs(initialMockLabs);
-    } catch (e) {
+    } catch (e: any) {
+      toast({ title: "Data Loading Error", description: `Could not load lab data. ${e.message}`, variant: "destructive" });
       setLabs(initialMockLabs);
     }
 
@@ -1508,7 +1510,8 @@ function useDashboardData() {
       const stored = localStorage.getItem(SAVED_CODES_STORAGE_KEY);
       if (stored) setSavedCodes(JSON.parse(stored));
       else setSavedCodes(mockInitialSavedCodes);
-    } catch (e) {
+    } catch (e: any) {
+      toast({ title: "Data Loading Error", description: `Could not load saved code. ${e.message}`, variant: "destructive" });
       setSavedCodes(mockInitialSavedCodes);
     }
 
@@ -1516,15 +1519,16 @@ function useDashboardData() {
         const storedExercises = localStorage.getItem(EXERCISES_STORAGE_KEY);
         if(storedExercises) setExercises(JSON.parse(storedExercises));
         else setExercises(mockExercises);
-    } catch(e) {
-        setExercises(mockExercises);
+    } catch(e: any) {
+      toast({ title: "Data Loading Error", description: `Could not load exercises. ${e.message}`, variant: "destructive" });
+      setExercises(mockExercises);
     }
     
     try {
         const storedTransactions = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
         if (storedTransactions) setTransactions(JSON.parse(storedTransactions));
         else setTransactions(initialMockTransactions);
-    } catch(e) {
+    } catch(e: any) {
         console.error("Error parsing transactions", e);
         setTransactions(initialMockTransactions);
     }
@@ -1532,11 +1536,11 @@ function useDashboardData() {
     try {
         const storedSupportRequests = localStorage.getItem(ADMIN_SUPPORT_REQUEST_STORAGE_KEY);
         if (storedSupportRequests) setAdminSupportRequests(JSON.parse(storedSupportRequests));
-    } catch(e) {
+    } catch(e: any) {
         console.error("Error parsing admin support requests", e);
     }
 
-  }, [isClient, currentUser]);
+  }, [isClient, currentUser, toast]);
 
   useEffect(() => { if(isClient) localStorage.setItem(CLASS_GROUPS_STORAGE_KEY, JSON.stringify(classGroups)); }, [classGroups, isClient]);
   useEffect(() => { if(isClient) localStorage.setItem(LABS_STORAGE_KEY, JSON.stringify(labs)); }, [labs, isClient]);

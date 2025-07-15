@@ -78,7 +78,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             }));
             localStorage.setItem(ALL_USERS_STORAGE_KEY, JSON.stringify(allUsersWithPasswords));
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Error initializing local storage data:", e);
         // Fallback to defaults if parsing fails
         localStorage.setItem(INSTITUTIONS_STORAGE_KEY, JSON.stringify(initialMockInstitutions));
@@ -103,8 +103,9 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
     try {
       return JSON.parse(usersJson) as StoredUser[];
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error reading stored users for auth:", error);
+      toast({ title: "Data Error", description: `Could not read user data. ${error.message}`, variant: "destructive" });
       return [];
     }
   };
