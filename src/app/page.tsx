@@ -1,9 +1,18 @@
-import { CodeCanvas } from "@/components/code-canvas";
+'use client'; // Required for redirect in App Router's page.tsx
 
-export default function Home() {
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/login');
+  }, [router]);
+
   return (
-    <main>
-      <CodeCanvas />
-    </main>
+    <div className="flex min-h-screen items-center justify-center">
+      <p style={{ color: 'black' }}>wait...</p>
+    </div>
   );
 }

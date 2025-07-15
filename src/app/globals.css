@@ -1,80 +1,88 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 248 53% 58%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 274 100% 50%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 10% 20%;
-    --input: 0 0% 14.9%;
-    --ring: 248 53% 58%;
-    --chart-1: 274 100% 70%;
-    --chart-2: 173 58% 50%;
-    --chart-3: 43 74% 66%;
-    --chart-4: 0 0% 63.9%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* New Style from image */
+    --background: 220 20% 15%; /* Dark Slate Blue */
+    --foreground: 210 20% 95%; /* Light Gray */
+
+    --card: 220 15% 25%; /* Darker Slate Blue */
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 15% 20%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 210 100% 60%; /* Bright Blue */
+    --primary-foreground: 220 20% 10%; /* Dark Blue for text on primary buttons */
+
+    --secondary: 220 15% 30%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 15% 30%;
+    --muted-foreground: 210 20% 65%;
+
+    --accent: 220 15% 40%;
+    --accent-foreground: 210 20% 95%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 35%;
+    --input: 220 15% 25%;
+    --ring: 210 100% 65%;
+
+    --radius: 0.75rem;
+
+    /* Chart colors */
+    --chart-1: hsl(210, 100%, 60%);
+    --chart-2: hsl(160, 100%, 40%);
+    --chart-3: hsl(40, 90%, 60%);
+    --chart-4: hsl(0, 84%, 65%);
+    --chart-5: hsl(280, 80%, 60%);
   }
+
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 248 53% 58%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 274 100% 50%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 10% 20%;
-    --input: 0 0% 14.9%;
-    --ring: 248 53% 58%;
-    --chart-1: 274 100% 70%;
-    --chart-2: 173 58% 50%;
-    --chart-3: 43 74% 66%;
-    --chart-4: 0 0% 63.9%;
-    --chart-5: 27 87% 67%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 220 20% 15%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 15% 25%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 15% 20%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 210 100% 60%;
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 220 15% 30%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 15% 30%;
+    --muted-foreground: 210 20% 65%;
+    
+    --accent: 220 15% 40%;
+    --accent-foreground: 210 20% 95%;
+
+    --destructive: 0, 70%, 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 35%;
+    --input: 220 15% 25%;
+    --ring: 210 100% 65%;
+
+    /* Chart colors for Dark Mode */
+    --chart-1: hsl(210, 100%, 60%);
+    --chart-2: hsl(160, 100%, 40%);
+    --chart-3: hsl(40, 90%, 60%);
+    --chart-4: hsl(0, 84%, 60%);
+    --chart-5: hsl(280, 80%, 60%);
   }
 }
 
@@ -83,6 +91,9 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+    min-height: 100vh;
   }
 }

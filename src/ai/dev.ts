@@ -1,5 +1,5 @@
-import { config } from 'dotenv';
-config();
+// Flows will be imported for their side effects in this file.
 
-import '@/ai/flows/code-completion.ts';
-import '@/ai/flows/code-explanation.ts';
+import './flows/skill-assessment-flow';
+import './flows/translate-content-flow';
+import './flows/code-assistant-flow';
