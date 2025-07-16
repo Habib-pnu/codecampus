@@ -129,6 +129,16 @@ function useDashboardData() {
     return 'cpp';
   }, [codeTitle]);
 
+  const getLocalizedText = (text: string | LocalizedString | undefined): string => {
+    if (!text) return '';
+    const lang = isClient ? (localStorage.getItem('codecampus_language') as 'en' | 'th' || 'th') : 'th';
+    if (typeof text === 'string') return text;
+    if (text) {
+      return text[lang] || text.en;
+    }
+    return '';
+  };
+
   const tabItemsConfig: TabItemConfig[] = useMemo(() => [
     { value: "progress", label: t('tabProgress'), Icon: BarChart3, roles: ['student', 'lecturer', 'admin', 'institution_admin'] },
     { value: "editor", label: t('tabEditor'), Icon: PencilRuler, roles: ['student', 'lecturer', 'normal', 'admin', 'institution_admin'] },
@@ -707,16 +717,6 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
     }));
     toast({ title: "Alias Updated", description: "Student alias has been renamed." });
   }, [toast]);
-  
-  const getLocalizedText = (text: string | LocalizedString | undefined): string => {
-    if (!text) return '';
-    const lang = isClient ? (localStorage.getItem('codecampus_language') as 'en' | 'th' || 'th') : 'th';
-    if (typeof text === 'string') return text;
-    if (text) {
-      return text[lang] || text.en;
-    }
-    return '';
-  };
 
   const handleAddExercise = useCallback((data: { exerciseData: Omit<Exercise, 'id' | 'creatorId'>; classIdToAssign?: string; }) => {
       if (!currentUser) return;
