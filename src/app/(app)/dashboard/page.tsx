@@ -234,7 +234,7 @@ function useDashboardData() {
           const result = JSON.parse(responseText) as ApiExecutionResponse;
           return { output: result.output || null, stderr: result.stderr || null, compileError: language === 'cpp' ? (result.compileError || null) : null, runtimeError: result.runtimeError || null, networkError: null, error: result.error || null };
       } catch (error: any) {
-          let errorMessage = `Error Reaching Local API: Failed to fetch from ${LOCAL_API_URL}. Details: ${error instanceof Error ? error.message : String(error)}`;
+          const errorMessage = `Error Reaching Local API: Failed to fetch from ${LOCAL_API_URL}. Details: ${error instanceof Error ? error.message : String(error)}`;
           toast({ title: "Local API Call Error", description: errorMessage, variant: "destructive" });
           return { output: null, stderr: null, compileError: language === 'cpp' ? `Local API Call Error: ${errorMessage}` : null, runtimeError: `Local API Call Error: ${errorMessage}`, networkError: `Local API Call Error: ${errorMessage}` };
       }
@@ -1501,7 +1501,7 @@ function useDashboardData() {
       if (stored) setClassGroups(JSON.parse(stored));
       else setClassGroups(initialMockClassGroups);
     } catch (e: any) {
-      toast({ title: "Data Loading Error", description: `Could not load class data. ${e instanceof Error ? e.message : String(e)}`, variant: "destructive" });
+      toast({ title: "Data Loading Error", description: `Could not load class data. ${String(e)}`, variant: "destructive" });
       setClassGroups(initialMockClassGroups);
     }
 
@@ -1510,7 +1510,7 @@ function useDashboardData() {
       if (stored) setLabs(JSON.parse(stored));
       else setLabs(initialMockLabs);
     } catch (e: any) {
-      toast({ title: "Data Loading Error", description: `Could not load lab data. ${e instanceof Error ? e.message : String(e)}`, variant: "destructive" });
+      toast({ title: "Data Loading Error", description: `Could not load lab data. ${String(e)}`, variant: "destructive" });
       setLabs(initialMockLabs);
     }
 
@@ -1519,7 +1519,7 @@ function useDashboardData() {
       if (stored) setSavedCodes(JSON.parse(stored));
       else setSavedCodes(mockInitialSavedCodes);
     } catch (e: any) {
-      toast({ title: "Data Loading Error", description: `Could not load saved code. ${e instanceof Error ? e.message : String(e)}`, variant: "destructive" });
+      toast({ title: "Data Loading Error", description: `Could not load saved code. ${String(e)}`, variant: "destructive" });
       setSavedCodes(mockInitialSavedCodes);
     }
 
@@ -1528,7 +1528,7 @@ function useDashboardData() {
         if(storedExercises) setExercises(JSON.parse(storedExercises));
         else setExercises(mockExercises);
     } catch(e: any) {
-      toast({ title: "Data Loading Error", description: `Could not load exercises. ${e instanceof Error ? e.message : String(e)}`, variant: "destructive" });
+      toast({ title: "Data Loading Error", description: `Could not load exercises. ${String(e)}`, variant: "destructive" });
       setExercises(mockExercises);
     }
     
