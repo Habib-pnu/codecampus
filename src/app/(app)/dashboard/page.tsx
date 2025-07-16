@@ -86,7 +86,7 @@ interface OverwriteDialogDetails {
 
 function useDashboardData() {
   const { toast } = useToast();
-  const { user: currentUser, updateCurrentUser, allUsers, setAllUsers, getStoredUsersWithPasswords, persistAllUsers, institutions, setInstitutions: setGlobalInstitutions, setHeaderContent } = useUser();
+  const { user: currentUser, updateCurrentUser, allUsers, setAllUsers, getStoredUsersWithPasswords, persistAllUsers, institutions, setInstitutions: setGlobalInstitutions, setHeaderContent, setNotificationData } = useUser();
   const { t } = useLanguage();
 
   const [isMobile, setIsMobile] = useState(false);
@@ -1041,7 +1041,7 @@ function useDashboardData() {
     const dp = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
 
     for (let i = 0; i <= len1; i++) dp[i][0] = i;
-    for (let j = 0; j <= len2; j++) dp[0][j] = j;
+    for (let j = 1; j <= len2; j++) dp[0][j] = j;
 
     for (let i = 1; i <= len1; i++) {
         for (let j = 1; j <= len2; j++) {
@@ -1592,6 +1592,17 @@ function useDashboardData() {
     }
   }, [isClient, currentUser, availableTabs, activeTab]);
   
+  // Pass notification data up to context
+  useEffect(() => {
+    if (setNotificationData) {
+      setNotificationData({
+        classGroups,
+        adminSupportRequests,
+        labs
+      });
+    }
+  }, [classGroups, adminSupportRequests, labs, setNotificationData]);
+  
   return {
     dashboardState: {
       currentUser, allUsers, code, isCompiling, codeTitle, savedCodes, currentSnippetId, exercises, currentExercise, userProgress, classGroups, labs, labAssignments, isNewSnippetModalOpen, newSnippetDialogInput, activeTab, institutions, promptPayNumber, coupons, transactions, showJoinClassModal, joinClassCode, newSnippetLanguage, showConfirmOverwriteSnippetDialog, overwriteDialogDetails, editorTabContentRef, editorLanguage, availableTabs, isClient, isAwaitingAIResponse, adminSupportRequests, isMobile
@@ -1651,25 +1662,8 @@ export default function DashboardPage() {
           });
         }
       });
-    }
-
-    // 3. Unread messages (for all roles)
-    // Private assistance chats
-    if (currentUser.role === 'student' || currentUser.role === 'normal') {
-      classGroups.forEach(cg => {
-        if ((currentUser.enrolledClassIds || []).includes(cg.id)) {
-          (cg.assistanceRequests || []).forEach(req => {
-            if (req.studentId === currentUser.id && req.status === 'open' && req.messages.length > 0) {
-              const lastMessage = req.messages[req.messages.length - 1];
-              if (lastMessage.senderId !== currentUser.id) {
-                totalNotifications++;
-              }
-            }
-          });
-        }
-      });
-    } else { // Lecturer, admin, etc.
-      classGroups.forEach(cg => {
+      // 3. Unread lecturer/admin messages in assistance chats
+       classGroups.forEach(cg => {
         if (cg.adminId === currentUser.id || currentUser.isAdmin) {
           (cg.assistanceRequests || []).forEach(req => {
             if (req.status === 'open' && req.messages.length > 0) {
@@ -1681,12 +1675,28 @@ export default function DashboardPage() {
           });
         }
       });
-      adminSupportRequests.forEach(req => {
+       adminSupportRequests.forEach(req => {
         if (req.status === 'open' && req.messages.length > 0) {
           const lastMessage = req.messages[req.messages.length - 1];
           if (lastMessage.senderId !== currentUser.id) {
             totalNotifications++;
           }
+        }
+      });
+    }
+
+    // 4. Unread messages for students
+    if (currentUser.role === 'student' || currentUser.role === 'normal') {
+      classGroups.forEach(cg => {
+        if ((currentUser.enrolledClassIds || []).includes(cg.id)) {
+          (cg.assistanceRequests || []).forEach(req => {
+            if (req.studentId === currentUser.id && req.status === 'open' && req.messages.length > 0) {
+              const lastMessage = req.messages[req.messages.length - 1];
+              if (lastMessage.senderId !== currentUser.id) {
+                totalNotifications++;
+              }
+            }
+          });
         }
       });
     }
@@ -1707,7 +1717,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col">
       <div className="container mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-8 flex flex-col">
-        {currentUser && currentUser.role === 'normal' && !(currentUser.enrolledClassIds || []).length && (
+        {currentUser && (currentUser.role === 'normal' || currentUser.role === 'student') && !(currentUser.enrolledClassIds || []).length && (
           <div className="mb-4 p-4 border border-primary/50 rounded-lg bg-primary/10 text-center">
             <p className="text-sm text-primary">{t('dashboardJoinClassPrompt')}</p>
             <Button onClick={() => dashboardActions.setShowJoinClassModal(true)} className="mt-2" variant="outline">

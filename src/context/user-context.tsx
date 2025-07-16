@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import type { User, Institution } from '@/types';
+import type { User, Institution, ClassGroup, AdminSupportRequest, Lab } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { initialMockUsers, initialMockInstitutions } from '@/lib/mock-data';
 
@@ -15,14 +15,22 @@ interface StoredUser extends User {
   passwordHash?: string;
 }
 
+interface NotificationData {
+  classGroups: ClassGroup[];
+  adminSupportRequests: AdminSupportRequest[];
+  labs: Lab[];
+}
+
 interface UserContextType {
   user: User | null;
   allUsers: User[];
   institutions: Institution[];
   isLoading: boolean;
   notificationCount: number;
+  notificationData: NotificationData;
   headerContent: React.ReactNode | null;
   setHeaderContent: (content: React.ReactNode | null) => void;
+  setNotificationData: (data: NotificationData) => void;
   login: (userToLogin: User) => void;
   logout: () => void;
   updateCurrentUser: (updatedUser: User) => void;
@@ -42,6 +50,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [notificationCount, setNotificationCount] = useState(0);
   const [headerContent, setHeaderContent] = useState<React.ReactNode | null>(null);
+  const [notificationData, setNotificationData] = useState<NotificationData>({ classGroups: [], adminSupportRequests: [], labs: [] });
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -197,7 +206,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     institutions,
     isLoading,
     notificationCount,
+    notificationData,
     headerContent,
+    setNotificationData,
     setHeaderContent,
     login,
     logout,

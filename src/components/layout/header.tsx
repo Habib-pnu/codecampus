@@ -17,11 +17,12 @@ interface HeaderProps {
   onLogout: () => void;
   onChangePassword: () => void;
   onEditProfile: () => void;
+  onNotificationClick: () => void;
   notificationCount?: number;
   tabs?: React.ReactNode;
 }
 
-export function Header({ user, onLogout, onChangePassword, onEditProfile, notificationCount, tabs }: HeaderProps) {
+export function Header({ user, onLogout, onChangePassword, onEditProfile, onNotificationClick, notificationCount, tabs }: HeaderProps) {
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -65,7 +66,7 @@ export function Header({ user, onLogout, onChangePassword, onEditProfile, notifi
 
         {user && (
           <div className="flex items-center gap-2 pl-4">
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative" onClick={onNotificationClick}>
                 <Bell className="h-5 w-5" />
                 {notificationCount && notificationCount > 0 && (
                     <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold ring-2 ring-slate-900/40">

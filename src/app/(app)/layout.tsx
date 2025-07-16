@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { UserProvider, useUser } from '@/context/user-context';
 import { Header } from '@/components/layout/header';
-import type { User } from '@/types';
+import type { User, ClassGroup, AdminSupportRequest } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChangePasswordDialog } from '@/components/auth/change-password-dialog';
 import { EditProfileDialog } from '@/components/auth/edit-profile-dialog';
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
 import { Toaster } from "@/components/ui/toaster-client";
+import { NotificationDialog } from '@/components/layout/notification-dialog';
 
 interface StoredUser extends User {
   passwordHash?: string;
@@ -25,7 +26,7 @@ interface AppLayoutProps {
 }
 
 function AppLayoutContent({ children }: AppLayoutProps) {
-  const { user, isLoading, logout, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers, notificationCount, headerContent } = useUser();
+  const { user, isLoading, logout, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers, notificationCount, headerContent, notificationData } = useUser();
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
@@ -34,6 +35,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   const [showChangePasswordDialog, setShowChangePasswordDialog] = React.useState(false);
   const [showEditProfileDialog, setShowEditProfileDialog] = React.useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = React.useState(false);
+  const [showNotificationDialog, setShowNotificationDialog] = React.useState(false);
 
   const [editProfileUsername, setEditProfileUsername] = React.useState("");
   const [editProfileNo, setEditProfileNo] = React.useState("");
@@ -168,6 +170,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
         onLogout={logout}
         onChangePassword={() => setShowChangePasswordDialog(true)}
         onEditProfile={() => setShowEditProfileDialog(true)}
+        onNotificationClick={() => setShowNotificationDialog(true)}
         notificationCount={notificationCount}
         tabs={headerContent}
       />
@@ -239,6 +242,14 @@ function AppLayoutContent({ children }: AppLayoutProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      )}
+      {showNotificationDialog && (
+        <NotificationDialog
+          isOpen={showNotificationDialog}
+          onClose={() => setShowNotificationDialog(false)}
+          currentUser={user}
+          notificationData={notificationData}
+        />
       )}
       <Toaster />
     </div>
