@@ -233,7 +233,7 @@ function useDashboardData() {
           const result = JSON.parse(responseText) as ApiExecutionResponse;
           return { output: result.output || null, stderr: result.stderr || null, compileError: language === 'cpp' ? (result.compileError || null) : null, runtimeError: result.runtimeError || null, networkError: null, error: result.error || null };
       } catch (error: any) {
-          const errorMessage = `Error Reaching Local API: Failed to fetch from ${LOCAL_API_URL}. Details: ${error instanceof Error ? error.message : String(error)}`;
+          const errorMessage = `Error Reaching Local API: Failed to fetch from ${LOCAL_API_URL}. Details: ${String(error)}`;
           toast({ title: "Local API Call Error", description: errorMessage, variant: "destructive" });
           return { output: null, stderr: null, compileError: language === 'cpp' ? `Local API Call Error: ${errorMessage}` : null, runtimeError: `Local API Call Error: ${errorMessage}`, networkError: `Local API Call Error: ${errorMessage}` };
       }
@@ -410,7 +410,8 @@ function useDashboardData() {
       assignedChallenges: [],
       assistanceRequests: [],
       publicChatMessages: [],
-      status: 'pending',
+      status: 'active',
+      startedAt: new Date().toISOString(),
       institutionId: currentUser.institutionId,
       capacity: 100,
     };
