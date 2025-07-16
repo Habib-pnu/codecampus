@@ -576,63 +576,77 @@ function useDashboardData() {
   }, [currentUser, toast, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers]);
 
   const handleApproveJoinRequest = useCallback(async (classId: string, requestingUserId: string, aliasForStudent: string) => {
-      const allStoredUsers = getStoredUsersWithPasswords();
-      const studentUserIndex = allStoredUsers.findIndex(u => u.id === requestingUserId);
-  
-      if (studentUserIndex === -1) {
-          toast({ title: "Error", description: "Requesting student not found.", variant: "destructive" });
-          return;
-      }
-  
-      let classToUpdate = classGroups.find(cg => cg.id === classId);
-      if (!classToUpdate) {
-          toast({ title: "Error", description: "Class not found.", variant: "destructive" });
-          return;
-      }
+    const allStoredUsers = getStoredUsersWithPasswords();
+    const studentUserIndex = allStoredUsers.findIndex(u => u.id === requestingUserId);
+
+    if (studentUserIndex === -1) {
+      toast({ title: "Error", description: "Requesting student not found.", variant: "destructive" });
+      return;
+    }
+
+    const classToUpdate = classGroups.find(cg => cg.id === classId);
+    if (!classToUpdate) {
+      toast({ title: "Error", description: "Class not found.", variant: "destructive" });
+      return;
+    }
+
+    // Crucial Check: Is the student already a member?
+    if (classToUpdate.members.some(m => m.userId === requestingUserId && m.status === 'active')) {
+      toast({ title: "Info", description: "This student is already an active member of the class.", variant: "default" });
+      // Remove the now-redundant join request
+      setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, pendingJoinRequests: cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId) } : cg));
+      return;
+    }
+
+    const targetInstitution = institutions.find(i => i.id === classToUpdate.institutionId);
+    const pricePerStudent = targetInstitution?.pricePerStudent ?? 0;
+    const lecturerId = classToUpdate.adminId;
+
+    // Update Lecturer's Billing Balance in user data
+    const lecturerUserIndex = allStoredUsers.findIndex(u => u.id === lecturerId);
+    if (lecturerUserIndex !== -1) {
+      const newBalance = (allStoredUsers[lecturerUserIndex].billingBalance || 0) + pricePerStudent;
+      allStoredUsers[lecturerUserIndex].billingBalance = newBalance;
       
-      // Check if student is already a member
-      if (classToUpdate.members.some(m => m.userId === requestingUserId)) {
-          toast({ title: "Info", description: "This student is already a member of the class.", variant: "default" });
-          return;
+      const updatedLecturer = allUsers.find(u => u.id === lecturerId);
+      if(updatedLecturer && currentUser?.id === lecturerId) {
+        updateCurrentUser({ ...updatedLecturer, billingBalance: newBalance });
       }
-  
-      const targetInstitution = institutions.find(i => i.id === classToUpdate!.institutionId);
-      const pricePerStudent = targetInstitution?.pricePerStudent ?? 0;
-      const lecturerId = classToUpdate.adminId;
-  
-      const lecturerUserIndex = allStoredUsers.findIndex(u => u.id === lecturerId);
-      if (lecturerUserIndex !== -1) {
-          allStoredUsers[lecturerUserIndex].billingBalance = (allStoredUsers[lecturerUserIndex].billingBalance || 0) + pricePerStudent;
-          const newTransaction: BillingTransaction = {
-              id: `txn-${Date.now()}-${requestingUserId.slice(-4)}`,
-              lecturerId,
-              studentId: requestingUserId,
-              classId,
-              amount: pricePerStudent,
-              timestamp: new Date().toISOString(),
-              paid: false,
-          };
-          setTransactions(prev => [...prev, newTransaction]);
+    }
+
+    // Create a new transaction record
+    const newTransaction: BillingTransaction = {
+      id: `txn-${Date.now()}-${requestingUserId.slice(-4)}`,
+      lecturerId,
+      studentId: requestingUserId,
+      classId,
+      amount: pricePerStudent,
+      timestamp: new Date().toISOString(),
+      paid: false,
+    };
+    setTransactions(prev => [...prev, newTransaction]);
+
+    // Update Student's Data
+    allStoredUsers[studentUserIndex].enrolledClassIds = [...new Set([...(allStoredUsers[studentUserIndex].enrolledClassIds || []), classId])];
+    allStoredUsers[studentUserIndex].pendingClassRequests = (allStoredUsers[studentUserIndex].pendingClassRequests || []).filter(req => req.classId !== classId);
+    
+    // Persist all user changes (student and lecturer)
+    localPersistAllUsers(allStoredUsers);
+
+    // Update Class Group State
+    const updatedClassGroups = classGroups.map(cg => {
+      if (cg.id === classId) {
+        const updatedPending = cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId);
+        const newMember: ClassMember = { userId: requestingUserId, alias: aliasForStudent, joinedAt: new Date().toISOString(), status: 'active' };
+        const updatedMembers = [...cg.members, newMember];
+        return { ...cg, members: updatedMembers, pendingJoinRequests: updatedPending };
       }
-  
-      allStoredUsers[studentUserIndex].enrolledClassIds = [...new Set([...(allStoredUsers[studentUserIndex].enrolledClassIds || []), classId])];
-      allStoredUsers[studentUserIndex].pendingClassRequests = (allStoredUsers[studentUserIndex].pendingClassRequests || []).filter(req => req.classId !== classId);
-      
-      const updatedClassGroups = classGroups.map(cg => {
-          if (cg.id === classId) {
-              const updatedPending = cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId);
-              const newMember: ClassMember = { userId: requestingUserId, alias: aliasForStudent, joinedAt: new Date().toISOString(), status: 'active' };
-              const updatedMembers = [...cg.members, newMember];
-              return { ...cg, members: updatedMembers, pendingJoinRequests: updatedPending };
-          }
-          return cg;
-      });
-  
-      toast({ title: "Student Approved", description: `Approved ${aliasForStudent}. Lecturer balance updated by ฿${pricePerStudent.toFixed(2)}.` });
-  
-      localPersistAllUsers(allStoredUsers);
-      setClassGroups(updatedClassGroups);
-  }, [classGroups, institutions, getStoredUsersWithPasswords, localPersistAllUsers, toast]);
+      return cg;
+    });
+    setClassGroups(updatedClassGroups);
+
+    toast({ title: "Student Approved", description: `Approved ${aliasForStudent}. Lecturer balance updated by ฿${pricePerStudent.toFixed(2)}.` });
+  }, [classGroups, institutions, getStoredUsersWithPasswords, localPersistAllUsers, allUsers, currentUser?.id, updateCurrentUser, toast]);
 
   const handleDenyJoinRequest = useCallback(async (classId: string, requestingUserId: string) => {
     const allStoredUsers = getStoredUsersWithPasswords();
@@ -1314,9 +1328,47 @@ function useDashboardData() {
     toast({ title: "Institution Admin Updated", description: "Admin list for the institution has been updated." });
   }, [toast, setGlobalInstitutions]);
   
-  const handleSimulatePayment = useCallback((selectedClassIds: string[], couponCode?: string) => {
-    toast({ title: "Payment Simulated", description: `Payment for ${selectedClassIds.length} class(es) has been simulated.` });
-  }, [toast]);
+ const handleSimulatePayment = useCallback((selectedClassIds: string[], couponCode?: string) => {
+    if (!currentUser) return;
+    
+    let totalPaid = 0;
+    const allStoredUsers = getStoredUsersWithPasswords();
+    const lecturerIndex = allStoredUsers.findIndex(u => u.id === currentUser.id);
+
+    // Update transactions to paid
+    const updatedTransactions = transactions.map(t => {
+      if (selectedClassIds.includes(t.classId) && !t.paid && t.lecturerId === currentUser.id) {
+        let finalAmountPaid = t.amount;
+        if (couponCode) {
+            const coupon = coupons.find(c => c.code.toLowerCase() === couponCode.toLowerCase());
+            if (coupon) {
+                if(coupon.discountType === 'percentage') {
+                    finalAmountPaid = t.amount * (1 - (coupon.discountValue / 100));
+                } else {
+                    finalAmountPaid = Math.max(0, t.amount - coupon.discountValue);
+                }
+            }
+        }
+        totalPaid += finalAmountPaid;
+        return { ...t, paid: true, couponUsed: couponCode, finalAmountPaid };
+      }
+      return t;
+    });
+    setTransactions(updatedTransactions);
+
+    // Update lecturer's billing balance
+    if (lecturerIndex !== -1) {
+      const originalBalance = allStoredUsers[lecturerIndex].billingBalance || 0;
+      const amountToDeduct = selectedClassIds.flatMap(classId => 
+          transactions.filter(t => t.classId === classId && !t.paid && t.lecturerId === currentUser.id)
+      ).reduce((sum, t) => sum + t.amount, 0);
+
+      allStoredUsers[lecturerIndex].billingBalance = Math.max(0, originalBalance - amountToDeduct);
+      localPersistAllUsers(allStoredUsers);
+    }
+    
+    toast({ title: "Payment Simulated", description: `Simulated payment of ฿${totalPaid.toFixed(2)} for ${selectedClassIds.length} class(es) has been recorded.` });
+  }, [currentUser, transactions, coupons, getStoredUsersWithPasswords, localPersistAllUsers, toast]);
 
   const handleCreateCoupon = useCallback((couponData: Omit<Coupon, 'id' | 'timesUsed' | 'creatorId'>) => {
     if (!currentUser) return;
