@@ -131,23 +131,6 @@ export function ProgressView({
   const { toast } = useToast();
   const { t, language } = useLanguage();
   const [viewingStudent, setViewingStudent] = React.useState<{student: UserType, classGroup: ClassGroup} | null>(null);
-  const [pendingRequestAliases, setPendingRequestAliases] = React.useState<Record<string, string>>({});
-
-  React.useEffect(() => {
-    const defaultAliases: Record<string, string> = {};
-    classGroups.forEach(cg => {
-      if (cg.pendingJoinRequests) {
-        cg.pendingJoinRequests.forEach(req => {
-          if (!pendingRequestAliases[req.userId]) {
-            defaultAliases[req.userId] = req.username; 
-          }
-        });
-      }
-    });
-    if (Object.keys(defaultAliases).length > 0) {
-      setPendingRequestAliases(prev => ({...prev, ...defaultAliases}));
-    }
-  }, [classGroups, pendingRequestAliases]);
   
   const getLocalizedText = (text: string | LocalizedString | undefined): string => {
     if (!text) return '';
@@ -478,39 +461,6 @@ export function ProgressView({
                           </div>
                         </CardHeader>
                         <CardContent className="pt-0 pb-3 space-y-4">
-                         {(classGroup.pendingJoinRequests || []).length > 0 && (
-                            <div>
-                                <h4 className="font-semibold text-sm mb-2">{t('pendingJoinRequests')} ({(classGroup.pendingJoinRequests || []).length})</h4>
-                                <ul className="divide-y divide-border rounded-md border bg-background">
-                                    {classGroup.pendingJoinRequests.map(req => (
-                                    <li key={req.userId} className="p-2 gap-2 hover:bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between">
-                                        <div className="flex-1">
-                                        <p className="font-medium text-sm">{req.fullName} <span className="text-xs text-muted-foreground">(Username: {req.username} / No: {req.no} / SID: {req.studentId})</span></p>
-                                        <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                                            <Input
-                                            value={pendingRequestAliases[req.userId] || req.username}
-                                            onChange={(e) => setPendingRequestAliases(prev => ({...prev, [req.userId]: e.target.value}))}
-                                            placeholder={t('setAliasPlaceholder')}
-                                            className="h-8 text-sm flex-grow"
-                                            />
-                                        </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 self-end sm:self-center mt-1 sm:mt-0">
-                                        <Button size="sm" variant="outline" onClick={() => handleApproveJoinRequest(classGroup.id, req.userId, pendingRequestAliases[req.userId] || req.username)} disabled={(!(pendingRequestAliases[req.userId] || req.username).trim()) || classGroup.status !== 'active' || (classGroup.members || []).length >= (classGroup.capacity || 100)} className="h-9">
-                                            <UserCheck className="md:hidden h-4 w-4"/>
-                                            <span className="hidden md:inline"><UserCheck className="mr-1 h-4 w-4"/>{t('approve')}</span>
-                                        </Button>
-                                        <Button size="sm" variant="destructive" onClick={() => handleDenyJoinRequest(classGroup.id, req.userId)} className="h-9">
-                                            <X className="md:hidden h-4 w-4"/>
-                                            <span className="hidden md:inline"><X className="mr-1 h-4 w-4"/>{t('deny')}</span>
-                                        </Button>
-                                        </div>
-                                    </li>
-                                    ))}
-                                </ul>
-                            </div>
-                         )}
-
                           {classStudents.length > 0 ? (
                             <Table>
                                 <TableHeader>
@@ -594,3 +544,4 @@ interface StudentSubmissionsDialogProps {
   classGroup: ClassGroup;
   labs: Lab[];
 }
+
