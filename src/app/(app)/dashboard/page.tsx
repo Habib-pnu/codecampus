@@ -29,10 +29,11 @@ import { LabStudentView } from "@/components/dashboard/student/lab-student-view"
 import { assistWithCode, CodeAssistantOutput } from '@/ai/flows/code-assistant-flow';
 import { assessCodeSkill } from '@/ai/flows/skill-assessment-flow';
 import { useLanguage } from "@/context/language-context";
+import { AdminDashboardView } from "@/components/dashboard/admin/admin-dashboard-view";
 
 
-import { initialMockUsers, mockExercises, mockInitialSavedCodes, mockClassGroups as initialMockClassGroups, initialMockLabs, initialMockTransactions, initialMockInstitutions, mockProgressData } from "@/lib/mock-data";
-import { Code, ListChecks, BarChart3, Users, ChevronDown, Save, LogInIcon, PlusCircle, BookOpenCheck, RotateCcw, BrainCircuit, Bot, Send, XIcon, MessageCircleQuestion, Sparkles, Bug, Settings2, PencilRuler } from "lucide-react";
+import { initialMockUsers, mockExercises, mockInitialSavedCodes, mockClassGroups as initialMockClassGroups, initialMockLabs, initialMockTransactions, initialMockInstitutions } from "@/lib/mock-data";
+import { Code, ListChecks, BarChart3, Users, ChevronDown, Save, LogInIcon, PlusCircle, BookOpenCheck, RotateCcw, BrainCircuit, Bot, Send, XIcon, MessageCircleQuestion, Sparkles, Bug, Settings2, PencilRuler, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isPast, isValid, sub } from "date-fns";
 import { th, enUS } from "date-fns/locale";
@@ -73,7 +74,7 @@ interface TabItemConfig {
   value: string;
   label: string;
   Icon: React.ElementType;
-  roles: Array<'normal' | 'student' | 'lecturer' | 'institution_admin' | 'admin'>;
+  roles: Array<User['role']>;
 }
 
 interface OverwriteDialogDetails {
@@ -128,8 +129,8 @@ function useDashboardData() {
     if (codeTitle.endsWith('.ts') || codeTitle.endsWith('.tsx')) return 'react';
     return 'cpp';
   }, [codeTitle]);
-
-  const getLocalizedText = (text: string | LocalizedString | undefined): string => {
+  
+  const getLocalizedText = useCallback((text: string | LocalizedString | undefined): string => {
     if (!text) return '';
     const lang = isClient ? (localStorage.getItem('codecampus_language') as 'en' | 'th' || 'th') : 'th';
     if (typeof text === 'string') return text;
@@ -137,23 +138,24 @@ function useDashboardData() {
       return text[lang] || text.en;
     }
     return '';
-  };
+  }, [isClient]);
 
   const tabItemsConfig: TabItemConfig[] = useMemo(() => [
-    { value: "progress", label: t('tabProgress'), Icon: BarChart3, roles: ['student', 'lecturer', 'admin', 'institution_admin'] },
-    { value: "editor", label: t('tabEditor'), Icon: PencilRuler, roles: ['student', 'lecturer', 'normal', 'admin', 'institution_admin'] },
-    { value: "labs", label: t('tabLabs'), Icon: BookOpenCheck, roles: ['student', 'lecturer', 'normal', 'admin', 'institution_admin'] },
-    { value: "exercises", label: t('tabLearn'), Icon: ListChecks, roles: ['student', 'lecturer', 'normal', 'admin', 'institution_admin'] },
+    { value: "admin", label: "Admin", Icon: Shield, roles: ['global_admin'] },
+    { value: "progress", label: t('tabProgress'), Icon: BarChart3, roles: ['student', 'lecturer', 'institution_admin'] },
+    { value: "editor", label: t('tabEditor'), Icon: PencilRuler, roles: ['student', 'lecturer', 'normal', 'institution_admin', 'global_admin'] },
+    { value: "labs", label: t('tabLabs'), Icon: BookOpenCheck, roles: ['student', 'lecturer', 'normal', 'institution_admin', 'global_admin'] },
+    { value: "exercises", label: t('tabLearn'), Icon: ListChecks, roles: ['student', 'lecturer', 'normal', 'institution_admin', 'global_admin'] },
     { value: "my-classes", label: t('tabMyClasses'), Icon: Users, roles: ['student', 'normal'] },
-    { value: "lecturer-panel", label: t('tabLecturerPanel'), Icon: Settings2, roles: ['lecturer', 'institution_admin', 'admin'] },
+    { value: "lecturer-panel", label: t('tabLecturerPanel'), Icon: Settings2, roles: ['lecturer', 'institution_admin'] },
   ], [t]);
 
   const availableTabs = useMemo(() => {
     if (!currentUser) return [];
     return tabItemsConfig.filter(tab => {
         if (currentUser && tab.roles.includes(currentUser.role)) {
-            if (tab.value === 'my-classes' && (currentUser.role === 'lecturer' || currentUser.isAdmin || currentUser.role === 'institution_admin')) return false;
-            if (tab.value === 'lecturer-panel' && !['lecturer', 'institution_admin', 'admin'].includes(currentUser.role) ) return false;
+            if (tab.value === 'my-classes' && (currentUser.role === 'lecturer' || currentUser.role === 'global_admin' || currentUser.role === 'institution_admin')) return false;
+            if (tab.value === 'lecturer-panel' && !['lecturer', 'institution_admin'].includes(currentUser.role) ) return false;
             return true;
         }
         return false;
@@ -424,6 +426,7 @@ function useDashboardData() {
       startedAt: new Date().toISOString(),
       institutionId: currentUser.institutionId,
       capacity: 100,
+      createdAt: new Date().toISOString(),
     };
     setClassGroups(prev => [newClass, ...prev]);
     toast({ title: "Class Created", description: `Class "${data.name}" has been created with code ${newClass.classCode}.` });
@@ -442,7 +445,7 @@ function useDashboardData() {
       toast({ title: "Error", description: "Class not found.", variant: "destructive" });
       return;
     }
-    if (!currentUser.isAdmin && classToDelete.adminId !== currentUser.id) {
+    if (currentUser.role !== 'global_admin' && classToDelete.adminId !== currentUser.id) {
       toast({ title: "Permission Denied", description: "You are not authorized to delete this class.", variant: "destructive" });
       return;
     }
@@ -502,9 +505,10 @@ function useDashboardData() {
     const allStoredUsers = getStoredUsersWithPasswords();
     const userIndex = allStoredUsers.findIndex(u => u.id === userId);
     if (userIndex !== -1) {
-      allStoredUsers[userIndex].isAdmin = !allStoredUsers[userIndex].isAdmin;
+      const isCurrentlyAdmin = allStoredUsers[userIndex].role === 'global_admin';
+      allStoredUsers[userIndex].role = isCurrentlyAdmin ? 'lecturer' : 'global_admin';
       localPersistAllUsers(allStoredUsers);
-      toast({ title: "Admin Status Changed", description: `Global admin status set to ${allStoredUsers[userIndex].isAdmin}.` });
+      toast({ title: "Admin Status Changed", description: `Global admin status set to ${!isCurrentlyAdmin}.` });
     }
   }, [getStoredUsersWithPasswords, localPersistAllUsers, toast]);
 
@@ -548,9 +552,8 @@ function useDashboardData() {
         userId: currentUser.id,
         fullName: currentUser.fullName,
         username: currentUser.username,
-        studentId: currentUser.studentId,
+        studentId: currentUser.studentId || '',
         requestedAt: new Date().toISOString(),
-        classId: targetClass.id,
     };
     
     const updatedPendingRequests = [...(targetClass.pendingJoinRequests || []), newRequest];
@@ -1252,7 +1255,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
         if (ac.assignmentId === assignmentId) {
           const studentProgress = ac.studentProgress[studentId];
           const labDetails = labs.find(l => l.id === ac.labId);
-          const challengeDetails = labDetails?.challenges.find(c => c.id === ac.id); // This seems like a bug, should be ac.challengeId
+          const challengeDetails = labDetails?.challenges.find(c => c.id === ac.challengeId); // Corrected
           const targetCodeDetails = challengeDetails?.targetCodes.find(tc => tc.id === targetCodeId);
           if (!studentProgress || !studentProgress[targetCodeId] || !targetCodeDetails) return ac;
           
@@ -1338,7 +1341,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
     setTransactions(updatedTransactions);
 
     // Update lecturer's billing balance
-    if (lecturerIndex !== -1) {
+    if (lecturerIndex !== -1 && false) { // Logic disabled per user request
       const originalBalance = allStoredUsers[lecturerIndex].billingBalance || 0;
       allStoredUsers[lecturerIndex].billingBalance = Math.max(0, originalBalance - totalAmountToDeduct);
       localPersistAllUsers(allStoredUsers);
@@ -1663,7 +1666,7 @@ export default function DashboardPage() {
     const foundTab = availableTabs.find(tab => tab.value === targetTabValue);
     if (foundTab) return foundTab;
     if (currentUser) {
-      if (currentUser.role === 'lecturer' || currentUser.role === 'institution_admin' || currentUser.isAdmin) {
+      if (currentUser.role === 'lecturer' || currentUser.role === 'institution_admin' || currentUser.role === 'global_admin') {
         targetTabValue = 'lecturer-panel';
       } else {
         targetTabValue = 'labs';
@@ -1679,7 +1682,7 @@ export default function DashboardPage() {
     let totalNotifications = 0;
 
     // --- For Lecturers / Admins ---
-    if (['lecturer', 'admin', 'institution_admin'].includes(currentUser.role)) {
+    if (['lecturer', 'institution_admin', 'global_admin'].includes(currentUser.role)) {
       // 1. Pending Join Requests (only for the actual class owner)
       classGroups.forEach(cg => {
         if (cg.adminId === currentUser.id) {
@@ -1688,7 +1691,7 @@ export default function DashboardPage() {
       });
       
       // 2. Pending Late Submission Requests (only for the actual class owner)
-      classGroups.forEach(cg => {
+       classGroups.forEach(cg => {
         if (cg.adminId === currentUser.id) {
           (cg.assignedChallenges || []).forEach(ac => {
             Object.values(ac.studentProgress).forEach(progress => {
@@ -1718,7 +1721,7 @@ export default function DashboardPage() {
       
       // 4. Admin support tickets are for global/inst admins
        adminSupportRequests.forEach(req => {
-        const canView = currentUser.isAdmin || (currentUser.role === 'institution_admin' && req.requesterId && allUsers.find(u => u.id === req.requesterId)?.institutionId === currentUser.institutionId);
+        const canView = currentUser.role === 'global_admin' || (currentUser.role === 'institution_admin' && req.requesterId && allUsers.find(u => u.id === req.requesterId)?.institutionId === currentUser.institutionId);
         if (canView && req.status === 'open' && req.messages.length > 0) {
           const lastMessage = req.messages[req.messages.length - 1];
           if (lastMessage.senderId !== currentUser.id) {
@@ -1847,7 +1850,7 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="labs" className={cn("p-0")}> 
-            <div style={{ display: (currentUser.role === 'lecturer' || currentUser.isAdmin || currentUser.role === 'institution_admin') ? 'block' : 'none' }}>
+            <div style={{ display: (currentUser.role === 'lecturer' || currentUser.role === 'global_admin' || currentUser.role === 'institution_admin') ? 'block' : 'none' }}>
               <LabAdminView {...dashboardState} {...dashboardActions} />
             </div>
             <div style={{ display: (currentUser.role === 'student' || currentUser.role === 'normal') ? 'block' : 'none' }}>
@@ -1863,9 +1866,15 @@ export default function DashboardPage() {
             <ProgressView {...dashboardState} {...dashboardActions} />
           </TabsContent>
 
-          {(currentUser?.role === 'lecturer' || currentUser.isAdmin || currentUser.role === 'institution_admin') && (
+          {(currentUser?.role === 'lecturer' || currentUser?.role === 'institution_admin') && (
             <TabsContent value="lecturer-panel" className={cn("p-0")}>
               <ClassManagementView {...dashboardState} {...dashboardActions} />
+            </TabsContent>
+          )}
+
+          {currentUser?.role === 'global_admin' && (
+            <TabsContent value="admin" className={cn("p-0")}>
+              <AdminDashboardView {...dashboardState} {...dashboardActions} />
             </TabsContent>
           )}
         </Tabs>

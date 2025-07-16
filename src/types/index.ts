@@ -11,6 +11,14 @@ export interface PendingJoinRequest {
   requestedAt: string;
 }
 
+export interface Achievement {
+  id: string;
+  title: LocalizedString;
+  description: LocalizedString;
+  icon: React.ElementType;
+  unlockedAt?: string;
+}
+
 export interface User {
   id: string;
   username: string; // ชื่อผู้ใช้
@@ -18,8 +26,8 @@ export interface User {
   studentId: string; // Student ID (รหัสนักศึกษา) - New primary identifier for login
   fullName: string; // ชื่อ สกุล
   email: string;
-  role: 'normal' | 'student' | 'lecturer' | 'institution_admin'; // Added institution_admin
-  isAdmin: boolean; // Global Admin
+  role: 'normal' | 'student' | 'lecturer' | 'institution_admin' | 'global_admin'; // Added global_admin
+  isAdmin: boolean; // Global Admin - DEPRECATED in favor of role
   mustChangePassword?: boolean;
   completedExercises: { exerciseId: number; completedAt: string; }[];
   totalScore: number;
@@ -28,6 +36,8 @@ export interface User {
   institutionId?: string; // Associated institution
   billingBalance?: number;
   lastBillingCycleDate?: string;
+  createdAt?: string;
+  achievements?: Achievement[];
 }
 
 export interface AssistantChatMessage {
@@ -39,7 +49,7 @@ export interface AssistantChatMessage {
 }
 
 export interface ProblemAssistantRequest {
-  id: string;
+  id:string;
   studentId: string;
   studentName: string;
   classId: string;
@@ -198,6 +208,7 @@ export interface ClassGroup {
   capacity?: number;
   assistanceRequests: ProblemAssistantRequest[];
   publicChatMessages: PublicChatMessage[];
+  createdAt?: string;
 }
 
 export interface LabTargetCode {
@@ -259,5 +270,3 @@ export interface LabAssignment {
         [studentUserId: string]: StudentProgress;
   };
 }
-
-    
