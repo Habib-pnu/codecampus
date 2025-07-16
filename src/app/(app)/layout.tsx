@@ -25,7 +25,7 @@ interface AppLayoutProps {
 }
 
 function AppLayoutContent({ children }: AppLayoutProps) {
-  const { user, isLoading, logout, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers, hasUnreadMessages, headerContent } = useUser();
+  const { user, isLoading, logout, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers, notificationCount, headerContent } = useUser();
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
@@ -168,7 +168,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
         onLogout={logout}
         onChangePassword={() => setShowChangePasswordDialog(true)}
         onEditProfile={() => setShowEditProfileDialog(true)}
-        hasUnreadMessages={hasUnreadMessages}
+        notificationCount={notificationCount}
         tabs={headerContent}
       />
       <main className="flex-1 mt-8">

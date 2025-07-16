@@ -1595,7 +1595,7 @@ function useDashboardData() {
 export default function DashboardPage() {
   const { dashboardState, dashboardActions, t } = useDashboardData();
   const { currentUser, isClient, activeTab, availableTabs, showJoinClassModal, joinClassCode, institutions, isNewSnippetModalOpen, newSnippetDialogInput, newSnippetLanguage, overwriteDialogDetails, showConfirmOverwriteSnippetDialog, classGroups, adminSupportRequests, isMobile } = dashboardState;
-  const { setHasUnreadMessages } = useUser();
+  const { setNotificationCount } = useUser();
   const { setActiveTab, handleRequestToJoinClass, setIsNewSnippetModalOpen, setNewSnippetDialogInput, setNewSnippetLanguage, handleConfirmCreateNewSnippet } = dashboardActions;
   
   const activeTabInfo = useMemo(() => {
@@ -1614,33 +1614,45 @@ export default function DashboardPage() {
      return defaultTab || null;
   }, [availableTabs, activeTab, currentUser]);
   
-  const getPublicChatLastSeen = () => {
-    if (!isClient) return {};
-    const stored = localStorage.getItem(PUBLIC_CHAT_LAST_SEEN_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  };
-
-  const setPublicChatLastSeen = (classId: string, timestamp: string) => {
-    if (!isClient) return;
-    const lastSeenMap = getPublicChatLastSeen();
-    lastSeenMap[classId] = timestamp;
-    localStorage.setItem(PUBLIC_CHAT_LAST_SEEN_STORAGE_KEY, JSON.stringify(lastSeenMap));
-  };
-  
   useEffect(() => {
     if (!currentUser || !isClient) return;
-    
-    let hasUnread = false;
 
-    // Logic for private assistance and admin support chats
+    let totalNotifications = 0;
+
+    if (['lecturer', 'admin', 'institution_admin'].includes(currentUser.role)) {
+      // 1. Pending join requests
+      classGroups.forEach(cg => {
+        if (cg.adminId === currentUser.id || currentUser.isAdmin) {
+          totalNotifications += (cg.pendingJoinRequests || []).length;
+        }
+      });
+
+      // 2. Pending late submission requests
+      classGroups.forEach(cg => {
+        if (cg.adminId === currentUser.id || currentUser.isAdmin) {
+          (cg.assignedChallenges || []).forEach(ac => {
+            Object.values(ac.studentProgress).forEach(progress => {
+              Object.values(progress).forEach(attempt => {
+                if (attempt.lateRequestStatus === 'requested') {
+                  totalNotifications++;
+                }
+              });
+            });
+          });
+        }
+      });
+    }
+
+    // 3. Unread messages (for all roles)
+    // Private assistance chats
     if (currentUser.role === 'student' || currentUser.role === 'normal') {
       classGroups.forEach(cg => {
-        if (currentUser.enrolledClassIds.includes(cg.id)) {
+        if ((currentUser.enrolledClassIds || []).includes(cg.id)) {
           (cg.assistanceRequests || []).forEach(req => {
             if (req.studentId === currentUser.id && req.status === 'open' && req.messages.length > 0) {
               const lastMessage = req.messages[req.messages.length - 1];
               if (lastMessage.senderId !== currentUser.id) {
-                hasUnread = true;
+                totalNotifications++;
               }
             }
           });
@@ -1653,7 +1665,7 @@ export default function DashboardPage() {
             if (req.status === 'open' && req.messages.length > 0) {
               const lastMessage = req.messages[req.messages.length - 1];
               if (lastMessage.senderId !== currentUser.id) {
-                hasUnread = true;
+                totalNotifications++;
               }
             }
           });
@@ -1661,47 +1673,17 @@ export default function DashboardPage() {
       });
       adminSupportRequests.forEach(req => {
         if (req.status === 'open' && req.messages.length > 0) {
-            const lastMessage = req.messages[req.messages.length - 1];
-            if (lastMessage.senderId !== currentUser.id) {
-                hasUnread = true;
-            }
-        }
-      });
-    }
-
-    // Logic for public class chats
-    if (!hasUnread) {
-      const lastSeenTimestamps = getPublicChatLastSeen();
-      classGroups.forEach(cg => {
-        if (currentUser.enrolledClassIds.includes(cg.id) || cg.adminId === currentUser.id) {
-          const publicMessages = cg.publicChatMessages || [];
-          if (publicMessages.length > 0) {
-            const lastMessageTimestamp = publicMessages[publicMessages.length - 1].timestamp;
-            const lastSeenTimestamp = lastSeenTimestamps[cg.id];
-            if (!lastSeenTimestamp || new Date(lastMessageTimestamp) > new Date(lastSeenTimestamp)) {
-              hasUnread = true;
-            }
+          const lastMessage = req.messages[req.messages.length - 1];
+          if (lastMessage.senderId !== currentUser.id) {
+            totalNotifications++;
           }
         }
       });
     }
 
-    setHasUnreadMessages(hasUnread);
+    setNotificationCount(totalNotifications);
 
-    // Update last seen timestamp for the currently active tab if it's a class view
-    if (['labs', 'my-classes', 'lecturer-panel'].includes(activeTab)) {
-       classGroups.forEach(cg => {
-        if (currentUser.enrolledClassIds.includes(cg.id) || cg.adminId === currentUser.id) {
-          const publicMessages = cg.publicChatMessages || [];
-          if (publicMessages.length > 0) {
-            const lastMessageTimestamp = publicMessages[publicMessages.length - 1].timestamp;
-            setPublicChatLastSeen(cg.id, lastMessageTimestamp);
-          }
-        }
-      });
-    }
-
-  }, [classGroups, adminSupportRequests, currentUser, setHasUnreadMessages, isClient, activeTab]);
+  }, [classGroups, adminSupportRequests, currentUser, setNotificationCount, isClient]);
 
 
   if (!isClient || !currentUser) {

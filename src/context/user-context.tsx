@@ -20,7 +20,7 @@ interface UserContextType {
   allUsers: User[];
   institutions: Institution[];
   isLoading: boolean;
-  hasUnreadMessages: boolean;
+  notificationCount: number;
   headerContent: React.ReactNode | null;
   setHeaderContent: (content: React.ReactNode | null) => void;
   login: (userToLogin: User) => void;
@@ -30,7 +30,7 @@ interface UserContextType {
   persistAllUsers: (users: StoredUser[]) => void;
   setAllUsers: (users: User[]) => void;
   setInstitutions: (institutions: Institution[]) => void;
-  setHasUnreadMessages: (hasUnread: boolean) => void;
+  setNotificationCount: (count: number) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -40,7 +40,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [headerContent, setHeaderContent] = useState<React.ReactNode | null>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -196,7 +196,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     allUsers,
     institutions,
     isLoading,
-    hasUnreadMessages,
+    notificationCount,
     headerContent,
     setHeaderContent,
     login,
@@ -206,7 +206,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     persistAllUsers,
     setAllUsers,
     setInstitutions,
-    setHasUnreadMessages,
+    setNotificationCount,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
