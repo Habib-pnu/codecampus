@@ -770,6 +770,7 @@ export function ClassManagementView({
     const instName = institution?.name || t('unknownInstitution');
     const pricePerStudent = institution?.pricePerStudent || 0;
     const canManageClass = currentUser.isAdmin || (currentUser.institutionId === cg.institutionId && (institutions.find(i=>i.id === currentUser.institutionId)?.adminUserIds || []).includes(currentUser.id)) || cg.adminId === currentUser.id;
+    const isOwner = currentUser.id === cg.adminId;
     const classAdmin = allUsers.find(u => u.id === cg.adminId);
     
     const allStudentsForClass = (cg.members || []).map(m => {
@@ -1016,7 +1017,7 @@ export function ClassManagementView({
               </Accordion>
             )}
 
-            {(cg.pendingJoinRequests || []).length > 0 && (
+            {isOwner && (cg.pendingJoinRequests || []).length > 0 && (
             <div className="mt-4 border-t pt-3">
               <h4 className="font-semibold mb-2 text-md">{t('pendingJoinRequests')} ({(cg.pendingJoinRequests || []).length})</h4>
               <ul className="divide-y divide-border rounded-md border bg-background">
@@ -1247,6 +1248,7 @@ export function ClassManagementView({
                                 {allPendingRequests.map(req => {
                                     const classGroup = managedClasses.find(cg => cg.id === req.classId);
                                     if (!classGroup) return null;
+                                    const isOwner = currentUser.id === classGroup.adminId;
                                     return (
                                         <TableRow key={`${req.classId}-${req.userId}`}>
                                             <TableCell>
@@ -1260,15 +1262,22 @@ export function ClassManagementView({
                                                   onChange={(e) => setPendingRequestAliases(prev => ({...prev, [req.userId]: e.target.value}))}
                                                   placeholder={t('setAliasPlaceholder')}
                                                   className="h-8 text-sm"
+                                                  disabled={!isOwner}
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right">
+                                                {isOwner ? (
+                                                <>
                                                 <Button size="xs" variant="outline" className="mr-1" onClick={() => handleApproveJoinRequest(req.classId, req.userId, pendingRequestAliases[req.userId] || req.username)} disabled={(!(pendingRequestAliases[req.userId] || req.username).trim()) || classGroup.status !== 'active' || (classGroup.members || []).length >= (classGroup.capacity || 100)}>
                                                     {t('approve')}
                                                 </Button>
                                                 <Button size="xs" variant="destructive_outline" onClick={() => handleDenyJoinRequest(req.classId, req.userId)}>
                                                     {t('deny')}
                                                 </Button>
+                                                </>
+                                                ) : (
+                                                    <Badge variant="outline">Owner Only</Badge>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     )
