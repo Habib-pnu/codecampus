@@ -671,9 +671,17 @@ export function ClassManagementView({
   });
 
   const lecturerStats = useMemo(() => {
-    let classesToSummarize = managedClasses.filter(cg => cg.status === 'active');
+    if (!currentUser) return { totalStudents: 0, avgLearnScore: 0, avgLabScore: 0, totalExercisesCompleted: 0 };
+    
+    // Filter to get only classes owned by the current user
+    const ownedClasses = managedClasses.filter(cg => cg.adminId === currentUser.id);
+
+    let classesToSummarize = ownedClasses.filter(cg => cg.status === 'active');
+    
     if (summarySelectedClassId !== 'all') {
-      classesToSummarize = managedClasses.filter(cg => cg.id === summarySelectedClassId);
+      // If a specific class is selected, it must be an owned class to be considered.
+      const selectedClass = ownedClasses.find(cg => cg.id === summarySelectedClassId);
+      classesToSummarize = selectedClass ? [selectedClass] : [];
     }
     
     const studentSet = new Set<string>();
@@ -1041,11 +1049,11 @@ export function ClassManagementView({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 self-end sm:self-center mt-1 sm:mt-0">
-                      <Button size="sm" variant="outline" onClick={() => handleApproveJoinRequest(cg.id, req.userId, pendingRequestAliases[req.userId] || req.username)} disabled={(!(pendingRequestAliases[req.userId] || req.username).trim()) || cg.status !== 'active' || (cg.members || []).length >= (cg.capacity || 100)} className="h-9">
+                      <Button size="sm" variant="outline" onClick={() => handleApproveJoinRequest(cg.id, req.userId, pendingRequestAliases[req.userId] || req.username)} disabled={(!isOwner) || (!(pendingRequestAliases[req.userId] || req.username).trim()) || cg.status !== 'active' || (cg.members || []).length >= (cg.capacity || 100)} className="h-9">
                         <UserCheck className="md:hidden h-4 w-4"/>
                         <span className="hidden md:inline"><UserCheck className="mr-1 h-4 w-4"/>{t('approve')}</span>
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDenyJoinRequest(cg.id, req.userId)} className="h-9">
+                      <Button size="sm" variant="destructive" onClick={() => handleDenyJoinRequest(cg.id, req.userId)} disabled={!isOwner} className="h-9">
                         <X className="md:hidden h-4 w-4"/>
                         <span className="hidden md:inline"><X className="mr-1 h-4 w-4"/>{t('deny')}</span>
                       </Button>
@@ -1161,7 +1169,7 @@ export function ClassManagementView({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Active Classes</SelectItem>
-                        {managedClasses.map(cg => (
+                        {managedClasses.filter(cg => cg.adminId === currentUser?.id).map(cg => (
                             <SelectItem key={cg.id} value={cg.id}>{cg.name}</SelectItem>
                         ))}
                     </SelectContent>
