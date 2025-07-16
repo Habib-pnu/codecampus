@@ -628,6 +628,7 @@ export const translations = {
     requestClosedTitle: { en: "Request Closed", th: "ปิดคำขอแล้ว" },
     requestClosedDesc: { en: "This chat has been closed. You can start a new request if you need more help.", th: "แชทนี้ถูกปิดแล้ว คุณสามารถสร้างคำขอใหม่หากต้องการความช่วยเหลือเพิ่มเติม" },
     openRequests: { en: "Open Assistance Requests ({count})", th: "คำขอความช่วยเหลือที่เปิดอยู่ ({count})" },
+    openChat: { en: "Open Chat", th: "เปิดแชท" },
     openRequestsShort: { en: "Open Requests", th: "คำขอที่เปิดอยู่" },
     closedRequests: { en: "Closed/History ({count})", th: "ปิดแล้ว/ประวัติ ({count})" },
     viewChat: { en: "Open Chat", th: "เปิดแชท" },
