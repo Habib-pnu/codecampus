@@ -43,8 +43,7 @@ import { SkillAssessmentView } from "../skill-assessment-view";
 
 type ClassManagementViewProps = Pick<DashboardState, "allUsers" | "classGroups" | "currentUser" | "exercises" | "institutions" | "coupons" | "promptPayNumber" | "transactions" | "labs" | "adminSupportRequests"> &
   Pick<DashboardActions,
-    "handleCreateClassGroup" | "handleDeleteClassGroup" |
-    "handleApproveJoinRequest" | "handleDenyJoinRequest" | "handleUpdateClassGroup" | "handleUpdateClassExercises" |
+    "handleCreateClassGroup" | "handleDeleteClassGroup" | "handleUpdateClassGroup" | "handleUpdateClassExercises" |
     "handleUpdateUserRole" | "handleAdminResetPassword" | "handleToggleAdminStatus" | "handleRemoveStudentFromClass" | "handleAdminDeleteUser" |
     "handleUpdateClassStatus" | "handleRenameStudentAlias" | "handleReactivateStudentInClass" |
     "handleAddInstitution" | "handleUpdateInstitution" | "handleDeleteInstitution" | "handleAssignInstitutionAdmin" |
@@ -57,7 +56,7 @@ type ClassManagementViewProps = Pick<DashboardState, "allUsers" | "classGroups" 
 export function ClassManagementView({
   allUsers, classGroups, currentUser, exercises, institutions, coupons, promptPayNumber, transactions, labs, adminSupportRequests,
   handleCreateClassGroup, handleDeleteClassGroup,
-  handleApproveJoinRequest, handleDenyJoinRequest, handleUpdateClassGroup, handleUpdateClassExercises,
+  handleUpdateClassGroup, handleUpdateClassExercises,
   handleUpdateUserRole, handleAdminResetPassword, handleToggleAdminStatus, handleRemoveStudentFromClass, handleAdminDeleteUser,
   handleUpdateClassStatus, handleRenameStudentAlias, handleReactivateStudentInClass,
   handleAddInstitution, handleUpdateInstitution, handleDeleteInstitution, handleAssignInstitutionAdmin,
@@ -75,7 +74,6 @@ export function ClassManagementView({
   const [tempClassName, setTempClassName] = useState("");
   
   const [explicitlyToggledClass, setExplicitlyToggledClass] = useState<string | null>(null);
-  const [pendingRequestAliases, setPendingRequestAliases] = useState<Record<string, string>>({});
 
   const [showManageExercisesModal, setShowManageExercisesModal] = useState(false);
   const [classToManageExercises, setClassToManageExercises] = useState<ClassGroup | null>(null);
@@ -640,23 +638,6 @@ export function ClassManagementView({
   }, [transactions]);
 
 
-  useEffect(() => {
-    const defaultAliases: Record<string, string> = {};
-    classGroups.forEach(cg => {
-      if (cg.pendingJoinRequests) {
-        cg.pendingJoinRequests.forEach(req => {
-          if (!pendingRequestAliases[req.userId]) {
-            defaultAliases[req.userId] = req.username; 
-          }
-        });
-      }
-    });
-    if (Object.keys(defaultAliases).length > 0) {
-      setPendingRequestAliases(prev => ({...prev, ...defaultAliases}));
-    }
-  }, [classGroups]);
-
-
   if (!currentUser || (currentUser.role !== 'lecturer' && !currentUser.isAdmin && currentUser.role !== 'institution_admin')) {
     return <Card><CardContent className="p-4"><p>{t('accessDenied')}</p></CardContent></Card>;
   }
@@ -772,7 +753,6 @@ export function ClassManagementView({
             .filter(cg => cg.adminId === currentUser.id)
             .forEach(cg => {
                 (cg.members || []).forEach(m => studentIdsInManagedClasses.add(m.userId));
-                (cg.pendingJoinRequests || []).forEach(req => studentIdsInManagedClasses.add(req.userId));
             });
         return allUsers.filter(u => studentIdsInManagedClasses.has(u.id));
     }
@@ -784,7 +764,6 @@ export function ClassManagementView({
     const instName = institution?.name || t('unknownInstitution');
     const pricePerStudent = institution?.pricePerStudent || 0;
     const canManageClass = currentUser.isAdmin || (currentUser.institutionId === cg.institutionId && (institutions.find(i=>i.id === currentUser.institutionId)?.adminUserIds || []).includes(currentUser.id)) || cg.adminId === currentUser.id;
-    const isOwner = currentUser.id === cg.adminId;
     const classAdmin = allUsers.find(u => u.id === cg.adminId);
     
     const allStudentsForClass = (cg.members || []).map(m => {
@@ -801,8 +780,6 @@ export function ClassManagementView({
     
     const assistanceRequestsForClassOpen = (cg.assistanceRequests || []).filter(r => r.status === 'open');
     const assistanceRequestsForClassClosed = (cg.assistanceRequests || []).filter(r => r.status === 'closed');
-    const pendingJoinRequestCount = (cg.pendingJoinRequests || []).length;
-
 
     return (
       <Card key={cg.id} className={cn("overflow-hidden", cg.isHalted && "border-destructive/50 bg-destructive/5", isFinished && 'bg-muted/30')}>
@@ -871,12 +848,6 @@ export function ClassManagementView({
                 <Badge variant="destructive" className="relative">
                   <MessageSquare size={12} className="mr-1"/>
                   {assistanceRequestsForClassOpen.length} {t('assistanceRequests.openRequestsShort')}
-                </Badge>
-              )}
-               {pendingJoinRequestCount > 0 && (
-                <Badge variant="info" className="relative bg-blue-500 text-white hover:bg-blue-500/80">
-                  <Bell size={12} className="mr-1"/>
-                  {pendingJoinRequestCount} Pending Request(s)
                 </Badge>
               )}
             </div>
@@ -1031,39 +1002,6 @@ export function ClassManagementView({
               </Accordion>
             )}
 
-            {isOwner && (cg.pendingJoinRequests || []).length > 0 && (
-            <div className="mt-4 border-t pt-3">
-              <h4 className="font-semibold mb-2 text-md">{t('pendingJoinRequests')} ({(cg.pendingJoinRequests || []).length})</h4>
-              <ul className="divide-y divide-border rounded-md border bg-background">
-                {cg.pendingJoinRequests.map(req => (
-                  <li key={req.userId} className="p-2 gap-2 hover:bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{req.fullName} <span className="text-xs text-muted-foreground">(Username: {req.username} / No: {req.no} / SID: {req.studentId} / Email: {req.userEmail})</span></p>
-                      <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                        <Input
-                          value={pendingRequestAliases[req.userId] || req.username}
-                          onChange={(e) => setPendingRequestAliases(prev => ({...prev, [req.userId]: e.target.value}))}
-                          placeholder={t('setAliasPlaceholder')}
-                          className="h-8 text-sm flex-grow"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 self-end sm:self-center mt-1 sm:mt-0">
-                      <Button size="sm" variant="outline" onClick={() => handleApproveJoinRequest(cg.id, req.userId, pendingRequestAliases[req.userId] || req.username)} disabled={(!isOwner) || (!(pendingRequestAliases[req.userId] || req.username).trim()) || cg.status !== 'active' || (cg.members || []).length >= (cg.capacity || 100)} className="h-9">
-                        <UserCheck className="md:hidden h-4 w-4"/>
-                        <span className="hidden md:inline"><UserCheck className="mr-1 h-4 w-4"/>{t('approve')}</span>
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDenyJoinRequest(cg.id, req.userId)} disabled={!isOwner} className="h-9">
-                        <X className="md:hidden h-4 w-4"/>
-                        <span className="hidden md:inline"><X className="mr-1 h-4 w-4"/>{t('deny')}</span>
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            )}
-             
             {activeStudents.length > 0 && (
                 <div className="mt-4">
                     <h4 className="font-semibold mb-2 text-md">{t('enrolledStudents')} ({activeStudents.length})</h4>
@@ -1146,13 +1084,6 @@ export function ClassManagementView({
   
   const openSupportRequests = (adminSupportRequests || []).filter(req => req.status === 'open');
   const closedSupportRequests = (adminSupportRequests || []).filter(req => req.status === 'closed');
-
-  const allPendingRequests = useMemo(() => {
-    return managedClasses.flatMap(cg => 
-        (cg.pendingJoinRequests || []).map(req => ({...req, className: cg.name}))
-    );
-  }, [managedClasses]);
-
 
   return (
     <div className="space-y-8">
@@ -1257,67 +1188,7 @@ export function ClassManagementView({
                 </CardContent>
             </Card>
 
-            {allPendingRequests.length > 0 && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-xl flex items-center gap-2"><Bell className="h-6 w-6 text-primary" /> {t('pendingJoinRequests')}</CardTitle>
-                        <CardDescription>{t('approveStudentsPrompt')}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>{t('student')}</TableHead>
-                                    <TableHead>{t('class')}</TableHead>
-                                    <TableHead>{t('alias')}</TableHead>
-                                    <TableHead className="text-right">{t('actions')}</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {allPendingRequests.map(req => {
-                                    const classGroup = managedClasses.find(cg => cg.id === req.classId);
-                                    if (!classGroup) return null;
-                                    const isOwner = currentUser.id === classGroup.adminId;
-                                    return (
-                                        <TableRow key={`${req.classId}-${req.userId}`}>
-                                            <TableCell>
-                                                <div className="font-medium">{req.fullName}</div>
-                                                <div className="text-xs text-muted-foreground">ID: {req.studentId}</div>
-                                            </TableCell>
-                                            <TableCell>{req.className}</TableCell>
-                                            <TableCell>
-                                                <Input
-                                                  value={pendingRequestAliases[req.userId] || req.username}
-                                                  onChange={(e) => setPendingRequestAliases(prev => ({...prev, [req.userId]: e.target.value}))}
-                                                  placeholder={t('setAliasPlaceholder')}
-                                                  className="h-8 text-sm"
-                                                  disabled={!isOwner}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {isOwner ? (
-                                                <>
-                                                <Button size="xs" variant="outline" className="mr-1" onClick={() => handleApproveJoinRequest(req.classId, req.userId, pendingRequestAliases[req.userId] || req.username)} disabled={(!(pendingRequestAliases[req.userId] || req.username).trim()) || classGroup.status !== 'active' || (classGroup.members || []).length >= (classGroup.capacity || 100)}>
-                                                    {t('approve')}
-                                                </Button>
-                                                <Button size="xs" variant="destructive_outline" onClick={() => handleDenyJoinRequest(req.classId, req.userId)}>
-                                                    {t('deny')}
-                                                </Button>
-                                                </>
-                                                ) : (
-                                                    <Badge variant="outline">Owner Only</Badge>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                 </Card>
-            )}
-
-            {activeAndPendingClasses.length === 0 && finishedClasses.length === 0 && allPendingRequests.length === 0 ? (
+            {activeAndPendingClasses.length === 0 && finishedClasses.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">{t('noClassesYet')}</p>
             ) : (
                 <div className="space-y-4">

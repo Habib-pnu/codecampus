@@ -26,7 +26,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: [],
-    pendingClassRequests: [],
     institutionId: 'pnu-inst-001', // Belongs to an institution but has global power
     billingBalance: 0,
   },
@@ -44,7 +43,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: [],
-    pendingClassRequests: [],
     institutionId: 'pnu-inst-001',
     billingBalance: 0,
   },
@@ -62,7 +60,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: [],
-    pendingClassRequests: [],
     institutionId: 'pnu-inst-001',
     billingBalance: 10, // Has some unpaid balance
   },
@@ -79,7 +76,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: [],
-    pendingClassRequests: [],
     institutionId: 'psu-inst-002',
     billingBalance: 0,
   },
@@ -97,7 +93,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [{ exerciseId: 1, completedAt: new Date().toISOString() }],
     totalScore: 10,
     enrolledClassIds: ['class-pnu-active-01'],
-    pendingClassRequests: [],
     institutionId: 'pnu-inst-001',
   },
   {
@@ -113,7 +108,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: ['class-pnu-active-01'],
-    pendingClassRequests: [],
     institutionId: 'pnu-inst-001',
   },
   {
@@ -129,19 +123,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: [],
-    pendingClassRequests: [
-       {
-        classId: 'class-pnu-pending-01',
-        className: 'Fall 2024 Algorithms',
-        userId: 'student-pnu-003',
-        username: 'student.pnu3',
-        no: '03',
-        studentId: 'S65003',
-        fullName: 'Piti Rakdee',
-        userEmail: 'piti.r@example.com',
-        requestedAt: new Date().toISOString()
-      }
-    ],
     institutionId: 'pnu-inst-001',
   },
   {
@@ -157,7 +138,6 @@ export const initialMockUsers: User[] = [
     completedExercises: [],
     totalScore: 0,
     enrolledClassIds: [],
-    pendingClassRequests: [],
     institutionId: 'psu-inst-002',
   }
 ];
@@ -173,7 +153,6 @@ export const mockClassGroups: ClassGroup[] = [
       { exerciseId: 1, addedAt: new Date().toISOString() },
       { exerciseId: 2, addedAt: new Date().toISOString() },
     ],
-    pendingJoinRequests: [],
     members: [
       { userId: 'student-pnu-001', alias: 'Somsak', joinedAt: new Date().toISOString(), status: 'active' },
       { userId: 'student-pnu-002', alias: 'Malee', joinedAt: new Date().toISOString(), status: 'active' },
@@ -206,19 +185,6 @@ export const mockClassGroups: ClassGroup[] = [
     adminId: 'lecturer-pnu-001',
     classCode: 'PNUALGO401',
     assignedExercises: [],
-    pendingJoinRequests: [
-      {
-        classId: 'class-pnu-pending-01',
-        className: 'Fall 2024 Algorithms',
-        userId: 'student-pnu-003',
-        username: 'student.pnu3',
-        no: '03',
-        studentId: 'S65003',
-        fullName: 'Piti Rakdee',
-        userEmail: 'piti.r@example.com',
-        requestedAt: new Date().toISOString()
-      }
-    ],
     members: [],
     assignedChallenges: [],
     status: 'pending',
@@ -233,7 +199,6 @@ export const mockClassGroups: ClassGroup[] = [
     adminId: 'lecturer-pnu-001',
     classCode: 'PNUOLD',
     assignedExercises: [],
-    pendingJoinRequests: [],
     members: [],
     assignedChallenges: [],
     status: 'finished',
@@ -253,7 +218,6 @@ export const mockClassGroups: ClassGroup[] = [
     assignedExercises: [
       { exerciseId: 9, addedAt: new Date().toISOString() },
     ],
-    pendingJoinRequests: [],
     members: [
       { userId: 'student-psu-001', alias: 'Peter', joinedAt: new Date().toISOString(), status: 'active' }
     ],
@@ -291,7 +255,6 @@ export const initialMockLabs: Lab[] = [
         labId: "lab-template-cpp-001",
         title: "Week 2: Conditional Logic",
         description: "Practice with if-else statements.",
-        language: "cpp",
         language: "cpp",
         targetCodes: [
           { id: "tc-cpp-2-1", code: "#include <iostream>\nint main() { int x; std::cin >> x; if(x%2==0){std::cout << \"Even\";} else {std::cout << \"Odd\";} return 0; }", requiredOutputSimilarity: 100, description: "Even or Odd", points: 100, testCases: [{ input: "10" }, {input: "7"}] }

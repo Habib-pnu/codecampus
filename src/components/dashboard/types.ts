@@ -73,8 +73,6 @@ export interface DashboardActions {
   handleAdminDeleteUser: (userId: string) => void;
 
   handleRequestToJoinClass: (classCode: string) => Promise<void>;
-  handleApproveJoinRequest: (classId: string, requestingUserId: string, aliasForStudent: string) => Promise<void>;
-  handleDenyJoinRequest: (classId: string, requestingUserId: string) => Promise<void>;
   handleUpdateClassExercises: (classId: string, newAssignedExercises: AssignedExerciseInfo[]) => void;
   handleLeaveClass: (classId: string) => Promise<void>;
   handleRemoveStudentFromClass: (classId: string, studentUserId: string) => void;

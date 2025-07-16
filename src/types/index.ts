@@ -16,17 +16,6 @@ export interface User {
   completedExercises: { exerciseId: number; completedAt: string; }[];
   totalScore: number;
   enrolledClassIds: string[];
-  pendingClassRequests: {
-    classId: string;
-    className: string;
-    userId: string; // ID of the user requesting
-    username: string;
-    no: string;
-    studentId: string;
-    fullName: string;
-    userEmail: string;
-    requestedAt: string;
-  }[];
   institutionId?: string; // Associated institution
   billingBalance?: number;
   lastBillingCycleDate?: string;
@@ -189,17 +178,6 @@ export interface ClassGroup {
   adminId: string; // User ID of the lecturer who created/administers the class
   classCode: string;
   assignedExercises: AssignedExerciseInfo[];
-  pendingJoinRequests: {
-    classId: string;
-    className: string;
-    userId: string;
-    username: string;
-    no: string;
-    studentId: string;
-    fullName: string;
-    userEmail: string;
-    requestedAt: string;
-  }[];
   members: ClassMember[];
   assignedChallenges: AssignedChallengeInfo[]; // This is now for assigned weeks
   status: 'pending' | 'active' | 'finished';

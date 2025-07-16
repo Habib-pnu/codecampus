@@ -99,7 +99,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
             completedExercises: Array.isArray(u.completedExercises) ? u.completedExercises : [],
             totalScore: typeof u.totalScore === 'number' ? u.totalScore : 0,
             enrolledClassIds: Array.isArray(u.enrolledClassIds) ? u.enrolledClassIds : [],
-            pendingClassRequests: Array.isArray(u.pendingClassRequests) ? u.pendingClassRequests : [],
             passwordHash: u.passwordHash || 'defaultpass',
             institutionId: u.institutionId || defaultInstId,
             billingBalance: typeof u.billingBalance === 'number' ? u.billingBalance : 0,

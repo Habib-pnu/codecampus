@@ -405,7 +405,6 @@ function useDashboardData() {
       adminId: currentUser.id,
       classCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
       assignedExercises: [],
-      pendingJoinRequests: [],
       members: [],
       assignedChallenges: [],
       assistanceRequests: [],
@@ -505,7 +504,6 @@ function useDashboardData() {
     setClassGroups(prev => prev.map(cg => ({
       ...cg,
       members: cg.members.filter(m => m.userId !== userId),
-      pendingJoinRequests: cg.pendingJoinRequests.filter(req => req.userId !== userId)
     })));
     toast({ title: "User Deleted", description: "User has been permanently deleted." });
   }, [getStoredUsersWithPasswords, localPersistAllUsers, toast]);
@@ -513,7 +511,6 @@ function useDashboardData() {
   const handleRequestToJoinClass = useCallback(async (classCode: string) => {
     if (!currentUser) return;
     
-    // Read the source of truth from localStorage first
     const storedClassGroupsJSON = localStorage.getItem(CLASS_GROUPS_STORAGE_KEY);
     const allClassGroups: ClassGroup[] = storedClassGroupsJSON ? JSON.parse(storedClassGroupsJSON) : [];
 
@@ -534,92 +531,38 @@ function useDashboardData() {
         toast({ title: "Already Enrolled", description: "You are already a member of this class.", variant: "default" });
         return;
     }
-    if (targetClass.pendingJoinRequests.some(req => req.userId === currentUser.id)) {
-        toast({ title: "Request Pending", description: "You have already sent a request to join this class.", variant: "default" });
-        return;
-    }
     
-    const newRequest = {
-      classId: targetClass.id,
-      className: targetClass.name,
-      userId: currentUser.id,
-      username: currentUser.username,
-      no: currentUser.no,
-      studentId: currentUser.studentId,
-      fullName: currentUser.fullName,
-      userEmail: currentUser.email,
-      requestedAt: new Date().toISOString()
-    };
-    
-    // Add the request to the class group from localStorage
-    allClassGroups[targetClassIndex].pendingJoinRequests.push(newRequest);
-    
-    // Persist the updated class groups back to localStorage
-    localStorage.setItem(CLASS_GROUPS_STORAGE_KEY, JSON.stringify(allClassGroups));
-
-    // Update the local state to reflect the change immediately
-    setClassGroups(allClassGroups);
-    
-    // Also update the user's local record of pending requests
-    const updatedUser = { ...currentUser, pendingClassRequests: [...(currentUser.pendingClassRequests || []), newRequest] };
-    updateCurrentUser(updatedUser);
-    
+    // --- Direct Enrollment Logic ---
     const allStoredUsers = getStoredUsersWithPasswords();
-    const userIndex = allStoredUsers.findIndex(u => u.id === currentUser.id);
-    if (userIndex !== -1) {
-        allStoredUsers[userIndex] = { ...allStoredUsers[userIndex], ...updatedUser };
-        persistAllUsers(allStoredUsers);
-    }
-    
-    toast({ title: "Request Sent", description: `Your request to join "${targetClass.name}" has been sent for approval.` });
-    setShowJoinClassModal(false);
-  }, [currentUser, toast, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers]);
-
-  const handleApproveJoinRequest = useCallback(async (classId: string, requestingUserId: string, aliasForStudent: string) => {
-    const allStoredUsers = getStoredUsersWithPasswords();
-    const studentUserIndex = allStoredUsers.findIndex(u => u.id === requestingUserId);
+    const studentUserIndex = allStoredUsers.findIndex(u => u.id === currentUser.id);
 
     if (studentUserIndex === -1) {
-      toast({ title: "Error", description: "Requesting student not found.", variant: "destructive" });
+      toast({ title: "Error", description: "Current student not found.", variant: "destructive" });
       return;
     }
 
-    const classToUpdate = classGroups.find(cg => cg.id === classId);
-    if (!classToUpdate) {
-      toast({ title: "Error", description: "Class not found.", variant: "destructive" });
-      return;
-    }
-
-    // Crucial Check: Is the student already a member?
-    if (classToUpdate.members.some(m => m.userId === requestingUserId && m.status === 'active')) {
-      toast({ title: "Info", description: "This student is already an active member of the class.", variant: "default" });
-      // Remove the now-redundant join request
-      setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, pendingJoinRequests: cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId) } : cg));
-      return;
-    }
-
-    const targetInstitution = institutions.find(i => i.id === classToUpdate.institutionId);
+    const targetInstitution = institutions.find(i => i.id === targetClass.institutionId);
     const pricePerStudent = targetInstitution?.pricePerStudent ?? 0;
-    const lecturerId = classToUpdate.adminId;
+    const lecturerId = targetClass.adminId;
 
-    // Update Lecturer's Billing Balance in user data
+    // Update Lecturer's Billing Balance
     const lecturerUserIndex = allStoredUsers.findIndex(u => u.id === lecturerId);
     if (lecturerUserIndex !== -1) {
       const newBalance = (allStoredUsers[lecturerUserIndex].billingBalance || 0) + pricePerStudent;
       allStoredUsers[lecturerUserIndex].billingBalance = newBalance;
       
-      const updatedLecturer = allUsers.find(u => u.id === lecturerId);
-      if(updatedLecturer && currentUser?.id === lecturerId) {
-        updateCurrentUser({ ...updatedLecturer, billingBalance: newBalance });
+      const updatedLecturerInState = allUsers.find(u => u.id === lecturerId);
+      if(updatedLecturerInState && currentUser?.id === lecturerId) {
+        updateCurrentUser({ ...updatedLecturerInState, billingBalance: newBalance });
       }
     }
 
     // Create a new transaction record
     const newTransaction: BillingTransaction = {
-      id: `txn-${Date.now()}-${requestingUserId.slice(-4)}`,
+      id: `txn-${Date.now()}-${currentUser.id.slice(-4)}`,
       lecturerId,
-      studentId: requestingUserId,
-      classId,
+      studentId: currentUser.id,
+      classId: targetClass.id,
       amount: pricePerStudent,
       timestamp: new Date().toISOString(),
       paid: false,
@@ -627,39 +570,23 @@ function useDashboardData() {
     setTransactions(prev => [...prev, newTransaction]);
 
     // Update Student's Data
-    allStoredUsers[studentUserIndex].enrolledClassIds = [...new Set([...(allStoredUsers[studentUserIndex].enrolledClassIds || []), classId])];
-    allStoredUsers[studentUserIndex].pendingClassRequests = (allStoredUsers[studentUserIndex].pendingClassRequests || []).filter(req => req.classId !== classId);
+    allStoredUsers[studentUserIndex].enrolledClassIds = [...new Set([...(allStoredUsers[studentUserIndex].enrolledClassIds || []), targetClass.id])];
     
     // Persist all user changes (student and lecturer)
     localPersistAllUsers(allStoredUsers);
 
     // Update Class Group State
-    const updatedClassGroups = classGroups.map(cg => {
-      if (cg.id === classId) {
-        const updatedPending = cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId);
-        const newMember: ClassMember = { userId: requestingUserId, alias: aliasForStudent, joinedAt: new Date().toISOString(), status: 'active' };
-        const updatedMembers = [...cg.members, newMember];
-        return { ...cg, members: updatedMembers, pendingJoinRequests: updatedPending };
-      }
-      return cg;
-    });
-    setClassGroups(updatedClassGroups);
-
-    toast({ title: "Student Approved", description: `Approved ${aliasForStudent}. Lecturer balance updated by ฿${pricePerStudent.toFixed(2)}.` });
-  }, [classGroups, institutions, getStoredUsersWithPasswords, localPersistAllUsers, allUsers, currentUser?.id, updateCurrentUser, toast]);
-
-  const handleDenyJoinRequest = useCallback(async (classId: string, requestingUserId: string) => {
-    const allStoredUsers = getStoredUsersWithPasswords();
-    const userIndex = allStoredUsers.findIndex(u => u.id === requestingUserId);
-
-    if (userIndex !== -1) {
-        allStoredUsers[userIndex].pendingClassRequests = (allStoredUsers[userIndex].pendingClassRequests || []).filter(req => req.classId !== classId);
-        localPersistAllUsers(allStoredUsers);
-    }
+    const newMember: ClassMember = { userId: currentUser.id, alias: currentUser.username, joinedAt: new Date().toISOString(), status: 'active' };
+    const updatedMembers = [...targetClass.members, newMember];
+    allClassGroups[targetClassIndex] = { ...targetClass, members: updatedMembers };
+    setClassGroups(allClassGroups);
     
-    setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, pendingJoinRequests: cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId) } : cg));
-    toast({ title: "Request Denied", description: "The join request has been denied." });
-  }, [getStoredUsersWithPasswords, localPersistAllUsers, toast, setClassGroups]);
+    // Also update the current user's state
+    updateCurrentUser({ ...currentUser, enrolledClassIds: [...(currentUser.enrolledClassIds || []), targetClass.id] });
+
+    toast({ title: "Joined Class", description: `You have successfully joined "${targetClass.name}".` });
+    setShowJoinClassModal(false);
+  }, [currentUser, toast, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers, institutions, allUsers]);
 
   const handleUpdateClassExercises = useCallback((classId: string, newAssignedExercises: AssignedExerciseInfo[]) => {
     setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, assignedExercises: newAssignedExercises } : cg));
@@ -1282,7 +1209,7 @@ function useDashboardData() {
           return { ...ac, studentProgress: { ...ac.studentProgress, [studentId]: updatedStudentProgress } };
         }
         return ac;
-      });
+      }));
       return { ...cg, assignedChallenges: updatedChallenges };
     }));
     toast({ title: "Request Approved", description: "The student can now submit their work for this problem." });
@@ -1626,9 +1553,9 @@ function useDashboardData() {
     setCurrentUser: (user: User | null) => {
       if (user) updateCurrentUser(user);
     },
-    setAllUsers, setCode, setIsCompiling, setCodeTitle, setSavedCodes, setCurrentSnippetId, setCurrentExercise, setExercises, handleNewSnippet, handleConfirmCreateNewSnippet, handleRenameSnippetTitle, handleSaveOrUpdateSnippet, handleLoadCode, handleDeleteSnippet, handleSubmitExercise, handleAddExercise, handleUpdateExercise, handleDeleteExercise, setClassGroups, handleCreateClassGroup, handleUpdateClassGroup, handleDeleteClassGroup, handleUpdateClassStatus, handleUpdateUserRole, handleAdminResetPassword, handleToggleAdminStatus, handleRemoveStudentFromClass, handleAdminDeleteUser, handleRequestToJoinClass, handleApproveJoinRequest, handleDenyJoinRequest, handleUpdateClassExercises, handleLeaveClass, setLabs, handleAddLabSemester, handleUpdateLabSemester, handleDeleteLabSemester, handleAddWeekToSemester, handleUpdateWeekInSemester, handleDeleteWeekFromSemester, handleCloneWeekToCourse, handleAddTargetCodeToWeek, handleUpdateTargetCodeInWeek, handleDeleteTargetCodeFromWeek, handleUseSnippetAsWeekTarget, handleAssignWeeksToClass, handleUnassignWeekFromClass, handleUpdateAssignedWeekExpiry, handleStudentSubmitLabCode, handleRequestLateSubmission, handleApproveLateSubmission, setIsNewSnippetModalOpen, setNewSnippetDialogInput, setActiveTab, handleRenameStudentAlias, setInstitutions: setGlobalInstitutions, handleAddInstitution, handleUpdateInstitution, handleDeleteInstitution, handleAssignInstitutionAdmin, setPromptPayNumber, setCoupons, setTransactions, handleSimulatePayment, handleCreateCoupon, handleUpdateCoupon, handleDeleteCoupon, handleReactivateStudentInClass, executeCodeApi, setShowJoinClassModal, setJoinClassCode, handleConfirmOverwrite, setNewSnippetLanguage, setOverwriteDialogDetails, setShowConfirmOverwriteSnippetDialog, setAdminSupportRequests, handleCreateAdminSupportRequest, handleSendAdminChatMessage, handleUpdateAdminSupportRequestStatus, handleCreateAssistanceRequest, handleSendAssistanceMessage, handleCloseAssistanceRequest, handleSendPublicChatMessage
+    setAllUsers, setCode, setIsCompiling, setCodeTitle, setSavedCodes, setCurrentSnippetId, setCurrentExercise, setExercises, handleNewSnippet, handleConfirmCreateNewSnippet, handleRenameSnippetTitle, handleSaveOrUpdateSnippet, handleLoadCode, handleDeleteSnippet, handleSubmitExercise, handleAddExercise, handleUpdateExercise, handleDeleteExercise, setClassGroups, handleCreateClassGroup, handleUpdateClassGroup, handleDeleteClassGroup, handleUpdateClassStatus, handleUpdateUserRole, handleAdminResetPassword, handleToggleAdminStatus, handleRemoveStudentFromClass, handleAdminDeleteUser, handleRequestToJoinClass, handleUpdateClassExercises, handleLeaveClass, setLabs, handleAddLabSemester, handleUpdateLabSemester, handleDeleteLabSemester, handleAddWeekToSemester, handleUpdateWeekInSemester, handleDeleteWeekFromSemester, handleCloneWeekToCourse, handleAddTargetCodeToWeek, handleUpdateTargetCodeInWeek, handleDeleteTargetCodeFromWeek, handleUseSnippetAsWeekTarget, handleAssignWeeksToClass, handleUnassignWeekFromClass, handleUpdateAssignedWeekExpiry, handleStudentSubmitLabCode, handleRequestLateSubmission, handleApproveLateSubmission, setIsNewSnippetModalOpen, setNewSnippetDialogInput, setActiveTab, handleRenameStudentAlias, setInstitutions: setGlobalInstitutions, handleAddInstitution, handleUpdateInstitution, handleDeleteInstitution, handleAssignInstitutionAdmin, setPromptPayNumber, setCoupons, setTransactions, handleSimulatePayment, handleCreateCoupon, handleUpdateCoupon, handleDeleteCoupon, handleReactivateStudentInClass, executeCodeApi, setShowJoinClassModal, setJoinClassCode, handleConfirmOverwrite, setNewSnippetLanguage, setOverwriteDialogDetails, setShowConfirmOverwriteSnippetDialog, setAdminSupportRequests, handleCreateAdminSupportRequest, handleSendAdminChatMessage, handleUpdateAdminSupportRequestStatus, handleCreateAssistanceRequest, handleSendAssistanceMessage, handleCloseAssistanceRequest, handleSendPublicChatMessage
   }), [
-    updateCurrentUser, setAllUsers, setCode, setIsCompiling, setCodeTitle, setSavedCodes, setCurrentSnippetId, setCurrentExercise, setExercises, handleNewSnippet, handleConfirmCreateNewSnippet, handleRenameSnippetTitle, handleSaveOrUpdateSnippet, handleLoadCode, handleDeleteSnippet, handleSubmitExercise, handleAddExercise, handleUpdateExercise, handleDeleteExercise, setClassGroups, handleCreateClassGroup, handleUpdateClassGroup, handleDeleteClassGroup, handleUpdateClassStatus, handleUpdateUserRole, handleAdminResetPassword, handleToggleAdminStatus, handleRemoveStudentFromClass, handleAdminDeleteUser, handleRequestToJoinClass, handleApproveJoinRequest, handleDenyJoinRequest, handleUpdateClassExercises, handleLeaveClass, setLabs, handleAddLabSemester, handleUpdateLabSemester, handleDeleteLabSemester, handleAddWeekToSemester, handleUpdateWeekInSemester, handleDeleteWeekFromSemester, handleCloneWeekToCourse, handleAddTargetCodeToWeek, handleUpdateTargetCodeInWeek, handleDeleteTargetCodeFromWeek, handleUseSnippetAsWeekTarget, handleAssignWeeksToClass, handleUnassignWeekFromClass, handleUpdateAssignedWeekExpiry, handleStudentSubmitLabCode, handleRequestLateSubmission, handleApproveLateSubmission, setIsNewSnippetModalOpen, setNewSnippetDialogInput, setActiveTab, handleRenameStudentAlias, setGlobalInstitutions, handleAddInstitution, handleUpdateInstitution, handleDeleteInstitution, handleAssignInstitutionAdmin, setPromptPayNumber, setCoupons, setTransactions, handleSimulatePayment, handleCreateCoupon, handleUpdateCoupon, handleDeleteCoupon, handleReactivateStudentInClass, executeCodeApi, setShowJoinClassModal, setJoinClassCode, handleConfirmOverwrite, setNewSnippetLanguage, setOverwriteDialogDetails, setShowConfirmOverwriteSnippetDialog, setAdminSupportRequests, handleCreateAdminSupportRequest, handleSendAdminChatMessage, handleUpdateAdminSupportRequestStatus, handleCreateAssistanceRequest, handleSendAssistanceMessage, handleCloseAssistanceRequest, handleSendPublicChatMessage
+    updateCurrentUser, setAllUsers, setCode, setIsCompiling, setCodeTitle, setSavedCodes, setCurrentSnippetId, setCurrentExercise, setExercises, handleNewSnippet, handleConfirmCreateNewSnippet, handleRenameSnippetTitle, handleSaveOrUpdateSnippet, handleLoadCode, handleDeleteSnippet, handleSubmitExercise, handleAddExercise, handleUpdateExercise, handleDeleteExercise, setClassGroups, handleCreateClassGroup, handleUpdateClassGroup, handleDeleteClassGroup, handleUpdateClassStatus, handleUpdateUserRole, handleAdminResetPassword, handleToggleAdminStatus, handleRemoveStudentFromClass, handleAdminDeleteUser, handleRequestToJoinClass, handleUpdateClassExercises, handleLeaveClass, setLabs, handleAddLabSemester, handleUpdateLabSemester, handleDeleteLabSemester, handleAddWeekToSemester, handleUpdateWeekInSemester, handleDeleteWeekFromSemester, handleCloneWeekToCourse, handleAddTargetCodeToWeek, handleUpdateTargetCodeInWeek, handleDeleteTargetCodeFromWeek, handleUseSnippetAsWeekTarget, handleAssignWeeksToClass, handleUnassignWeekFromClass, handleUpdateAssignedWeekExpiry, handleStudentSubmitLabCode, handleRequestLateSubmission, handleApproveLateSubmission, setIsNewSnippetModalOpen, setNewSnippetDialogInput, setActiveTab, handleRenameStudentAlias, setGlobalInstitutions, handleAddInstitution, handleUpdateInstitution, handleDeleteInstitution, handleAssignInstitutionAdmin, setPromptPayNumber, setCoupons, setTransactions, handleSimulatePayment, handleCreateCoupon, handleUpdateCoupon, handleDeleteCoupon, handleReactivateStudentInClass, executeCodeApi, setShowJoinClassModal, setJoinClassCode, handleConfirmOverwrite, setNewSnippetLanguage, setOverwriteDialogDetails, setShowConfirmOverwriteSnippetDialog, setAdminSupportRequests, handleCreateAdminSupportRequest, handleSendAdminChatMessage, handleUpdateAdminSupportRequestStatus, handleCreateAssistanceRequest, handleSendAssistanceMessage, handleCloseAssistanceRequest, handleSendPublicChatMessage
   ]);
 
   useEffect(() => {
@@ -1697,14 +1624,7 @@ export default function DashboardPage() {
 
     // --- For Lecturers / Admins ---
     if (['lecturer', 'admin', 'institution_admin'].includes(currentUser.role)) {
-      // 1. Pending Join Requests (only for the actual class owner)
-      classGroups.forEach(cg => {
-        if (cg.adminId === currentUser.id) {
-          totalNotifications += (cg.pendingJoinRequests || []).length;
-        }
-      });
-
-      // 2. Pending Late Submission Requests (only for the actual class owner)
+      // 1. Pending Late Submission Requests (only for the actual class owner)
       classGroups.forEach(cg => {
         if (cg.adminId === currentUser.id) {
           (cg.assignedChallenges || []).forEach(ac => {
@@ -1719,7 +1639,7 @@ export default function DashboardPage() {
         }
       });
       
-      // 3. Unread lecturer/admin messages in assistance chats (only for the actual class owner)
+      // 2. Unread lecturer/admin messages in assistance chats (only for the actual class owner)
        classGroups.forEach(cg => {
         if (cg.adminId === currentUser.id) {
           (cg.assistanceRequests || []).forEach(req => {
@@ -1733,7 +1653,7 @@ export default function DashboardPage() {
         }
       });
       
-      // 4. Admin support tickets are for global/inst admins
+      // 3. Admin support tickets are for global/inst admins
        adminSupportRequests.forEach(req => {
         const canView = currentUser.isAdmin || (currentUser.role === 'institution_admin' && req.requesterId && allUsers.find(u => u.id === req.requesterId)?.institutionId === currentUser.institutionId);
         if (canView && req.status === 'open' && req.messages.length > 0) {
@@ -1745,7 +1665,7 @@ export default function DashboardPage() {
       });
     }
 
-    // 5. Unread messages for students
+    // 4. Unread messages for students
     if (currentUser.role === 'student' || currentUser.role === 'normal') {
       classGroups.forEach(cg => {
         if ((currentUser.enrolledClassIds || []).includes(cg.id)) {

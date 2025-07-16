@@ -191,7 +191,6 @@ export function AuthForm({ mode }: AuthFormProps) {
         completedExercises: [],
         totalScore: 0,
         enrolledClassIds: [],
-        pendingClassRequests: [],
         passwordHash: password.trim(),
         institutionId: finalInstitutionId,
       };

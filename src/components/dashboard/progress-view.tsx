@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 
 type ProgressViewProps = Pick<DashboardState, "userProgress" | "currentUser" | "exercises" | "allUsers" | "classGroups" | "labs" > &
-  Pick<DashboardActions, "handleApproveJoinRequest" | "handleDenyJoinRequest">;
+  Pick<DashboardActions, "handleLeaveClass">;
 
 const StudentSubmissionsDialog = React.memo(function StudentSubmissionsDialog({ isOpen, onClose, student, classGroup, labs }: StudentSubmissionsDialogProps) {
   const { t, language } = useLanguage();
@@ -567,4 +567,3 @@ interface StudentSubmissionsDialogProps {
   classGroup: ClassGroup;
   labs: Lab[];
 }
-
