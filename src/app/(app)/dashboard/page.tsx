@@ -1670,7 +1670,7 @@ function useDashboardData() {
 
 export default function DashboardPage() {
   const { dashboardState, dashboardActions, t } = useDashboardData();
-  const { currentUser, isClient, activeTab, availableTabs, showJoinClassModal, joinClassCode, institutions, isNewSnippetModalOpen, newSnippetDialogInput, newSnippetLanguage, overwriteDialogDetails, showConfirmOverwriteSnippetDialog, classGroups, adminSupportRequests, isMobile } = dashboardState;
+  const { currentUser, isClient, activeTab, availableTabs, showJoinClassModal, joinClassCode, institutions, isNewSnippetModalOpen, newSnippetDialogInput, newSnippetLanguage, overwriteDialogDetails, showConfirmOverwriteSnippetDialog, classGroups, adminSupportRequests, allUsers, isMobile } = dashboardState;
   const { setNotificationCount } = useUser();
   const { setActiveTab, handleRequestToJoinClass, setIsNewSnippetModalOpen, setNewSnippetDialogInput, setNewSnippetLanguage, handleConfirmCreateNewSnippet } = dashboardActions;
   
