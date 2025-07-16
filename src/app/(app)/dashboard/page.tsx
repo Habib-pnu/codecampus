@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
@@ -577,72 +575,64 @@ function useDashboardData() {
   }, [currentUser, toast, updateCurrentUser, getStoredUsersWithPasswords, persistAllUsers]);
 
   const handleApproveJoinRequest = useCallback(async (classId: string, requestingUserId: string, aliasForStudent: string) => {
-    const targetClass = classGroups.find(cg => cg.id === classId);
-    if (!targetClass) {
-        toast({ title: "Error", description: "Class not found.", variant: "destructive" });
-        return;
-    }
-    const targetInstitution = institutions.find(i => i.id === targetClass.institutionId);
-    const pricePerStudent = targetInstitution?.pricePerStudent ?? 0;
-    const lecturerId = targetClass.adminId;
-
     const allStoredUsers = getStoredUsersWithPasswords();
-    
+
     const studentUserIndex = allStoredUsers.findIndex(u => u.id === requestingUserId);
     if (studentUserIndex === -1) {
         toast({ title: "Error", description: "Requesting student not found.", variant: "destructive" });
         return;
     }
 
-    const lecturerUserIndex = allStoredUsers.findIndex(u => u.id === lecturerId);
-    if (lecturerUserIndex === -1) {
-        toast({ title: "Error", description: "Class lecturer not found.", variant: "destructive" });
-        return;
-    }
-
-    const currentLecturer = allStoredUsers[lecturerUserIndex];
-    currentLecturer.billingBalance = (currentLecturer.billingBalance || 0) + pricePerStudent;
-
-    const currentStudent = allStoredUsers[studentUserIndex];
-    currentStudent.enrolledClassIds = [...new Set([...(currentStudent.enrolledClassIds || []), classId])];
-    currentStudent.pendingClassRequests = (currentStudent.pendingClassRequests || []).filter(req => req.classId !== classId);
-    
-    localPersistAllUsers(allStoredUsers);
-
-    const newTransaction: BillingTransaction = {
-      id: `txn-${Date.now()}-${requestingUserId.slice(-4)}`,
-      lecturerId,
-      studentId: requestingUserId,
-      classId,
-      amount: pricePerStudent,
-      timestamp: new Date().toISOString(),
-      paid: false,
-    };
-    setTransactions(prev => [...prev, newTransaction]);
-    
-    setClassGroups(prevClassGroups => prevClassGroups.map(cg => {
+    const updatedClassGroups = classGroups.map(cg => {
         if (cg.id === classId) {
+            const targetInstitution = institutions.find(i => i.id === cg.institutionId);
+            const pricePerStudent = targetInstitution?.pricePerStudent ?? 0;
+            const lecturerId = cg.adminId;
+            const lecturerUserIndex = allStoredUsers.findIndex(u => u.id === lecturerId);
+            if (lecturerUserIndex !== -1) {
+                allStoredUsers[lecturerUserIndex].billingBalance = (allStoredUsers[lecturerUserIndex].billingBalance || 0) + pricePerStudent;
+                const newTransaction: BillingTransaction = {
+                    id: `txn-${Date.now()}-${requestingUserId.slice(-4)}`,
+                    lecturerId,
+                    studentId: requestingUserId,
+                    classId,
+                    amount: pricePerStudent,
+                    timestamp: new Date().toISOString(),
+                    paid: false,
+                };
+                setTransactions(prev => [...prev, newTransaction]);
+            }
+
+            allStoredUsers[studentUserIndex].enrolledClassIds = [...new Set([...(allStoredUsers[studentUserIndex].enrolledClassIds || []), classId])];
+            allStoredUsers[studentUserIndex].pendingClassRequests = (allStoredUsers[studentUserIndex].pendingClassRequests || []).filter(req => req.classId !== classId);
+            
             const updatedPending = cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId);
             const newMember: ClassMember = { userId: requestingUserId, alias: aliasForStudent, joinedAt: new Date().toISOString(), status: 'active' };
             const updatedMembers = [...cg.members, newMember];
+            
+            toast({ title: "Student Approved", description: `Approved ${aliasForStudent}. Lecturer balance updated by ฿${pricePerStudent.toFixed(2)}.` });
+
             return { ...cg, members: updatedMembers, pendingJoinRequests: updatedPending };
         }
         return cg;
-    }));
-    
-    toast({ title: "Student Approved", description: `Approved ${aliasForStudent}. Lecturer balance updated by ฿${pricePerStudent.toFixed(2)}.` });
-  }, [classGroups, institutions, getStoredUsersWithPasswords, localPersistAllUsers, toast, setTransactions]);
+    });
+
+    localPersistAllUsers(allStoredUsers);
+    setClassGroups(updatedClassGroups);
+  }, [classGroups, institutions, getStoredUsersWithPasswords, localPersistAllUsers, toast]);
 
   const handleDenyJoinRequest = useCallback(async (classId: string, requestingUserId: string) => {
-    setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, pendingJoinRequests: cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId) } : cg));
     const allStoredUsers = getStoredUsersWithPasswords();
     const userIndex = allStoredUsers.findIndex(u => u.id === requestingUserId);
+
     if (userIndex !== -1) {
         allStoredUsers[userIndex].pendingClassRequests = (allStoredUsers[userIndex].pendingClassRequests || []).filter(req => req.classId !== classId);
         localPersistAllUsers(allStoredUsers);
     }
+    
+    setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, pendingJoinRequests: cg.pendingJoinRequests.filter(req => req.userId !== requestingUserId) } : cg));
     toast({ title: "Request Denied", description: "The join request has been denied." });
-  }, [getStoredUsersWithPasswords, localPersistAllUsers, toast, updateCurrentUser, currentUser]);
+  }, [getStoredUsersWithPasswords, localPersistAllUsers, toast, setClassGroups]);
 
   const handleUpdateClassExercises = useCallback((classId: string, newAssignedExercises: AssignedExerciseInfo[]) => {
     setClassGroups(prev => prev.map(cg => cg.id === classId ? { ...cg, assignedExercises: newAssignedExercises } : cg));
@@ -1254,7 +1244,7 @@ function useDashboardData() {
         if (ac.assignmentId === assignmentId) {
           const studentProgress = ac.studentProgress[studentId];
           const labDetails = labs.find(l => l.id === ac.labId);
-          const challengeDetails = labDetails?.challenges.find(c => c.id === ac.challengeId);
+          const challengeDetails = labDetails?.challenges.find(c => c.id === challengeId);
           const targetCodeDetails = challengeDetails?.targetCodes.find(tc => tc.id === targetCodeId);
           if (!studentProgress || !studentProgress[targetCodeId] || !targetCodeDetails) return ac;
           
