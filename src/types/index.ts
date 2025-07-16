@@ -203,7 +203,7 @@ export interface ClassGroup {
 export interface LabTargetCode {
   id: string;
   code: string;
-  description: string;
+  description: LocalizedString;
   sourceSnippetId?: string;
   enforcedStatement?: EnforcedStatement;
   requiredOutputSimilarity: number;
@@ -215,8 +215,8 @@ export interface LabTargetCode {
 export interface LabChallenge {
   id:string;
   labId: string;
-  title: string;
-  description: string;
+  title: LocalizedString;
+  description: LocalizedString;
   language: SupportedLanguage;
   targetCodes: LabTargetCode[];
 }
@@ -259,3 +259,5 @@ export interface LabAssignment {
         [studentUserId: string]: StudentProgress;
   };
 }
+
+    

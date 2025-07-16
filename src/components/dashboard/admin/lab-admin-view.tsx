@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Editor from "@monaco-editor/react";
 
 import type { DashboardState, DashboardActions } from '../types';
-import type { Lab, LabChallenge, LabTargetCode, CodeSnippet, SupportedLanguage, EnforcedStatement, User, ClassGroup } from '@/types';
+import type { Lab, LabChallenge, LabTargetCode, CodeSnippet, SupportedLanguage, EnforcedStatement, User, ClassGroup, LocalizedString } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -106,6 +106,15 @@ export function LabAdminView({
   const [protectedTargetCode, setProtectedTargetCode] = useState("");
 
   const userSavedSnippets = savedCodes?.filter(sc => sc.userId === currentUser?.id) || [];
+
+  const getLocalizedText = (text: string | LocalizedString | undefined): string => {
+    if (!text) return '';
+    if (typeof text === 'string') return text;
+    if (text) {
+      return text[language] || text.en || '';
+    }
+    return '';
+  };
 
   const currentChallengeForTargetDialog = useMemo(() => {
     if (!targetCodeLabId || !targetCodeChallengeId) return null;
@@ -302,7 +311,7 @@ export function LabAdminView({
         }
     }
     
-    const createdLab = handleAddLabSemester({ title: finalTitle, description: finalDescription, scope: newLabScope, creatorId: currentUser.id });
+    const createdLab = handleAddLabSemester({ title: finalTitle, description: finalDescription, scope: newLabScope });
     if (createdLab) {
       setShowCreateLabDialog(false);
     }
@@ -311,8 +320,8 @@ export function LabAdminView({
 
   const openEditLabDialog = (lab: Lab) => {
     setEditingLab(lab);
-    setTempLabTitle(typeof lab.title === 'string' ? lab.title : lab.title[language] || lab.title.en);
-    setTempLabDescription(typeof lab.description === 'string' ? lab.description : lab.description[language] || lab.description.en);
+    setTempLabTitle(getLocalizedText(lab.title));
+    setTempLabDescription(getLocalizedText(lab.description));
     setShowEditLabDialog(true);
   };
 
@@ -332,11 +341,11 @@ export function LabAdminView({
     const otherLang = language === 'en' ? 'th' : 'en';
 
     try {
-        if (tempLabTitle) {
+        if (tempLabTitle && finalTitle[language] !== editingLab.title[language]) {
             const res = await translateContent({ text: tempLabTitle, targetLanguage: otherLang });
             finalTitle[otherLang] = res.translatedText;
         }
-        if (tempLabDescription) {
+        if (tempLabDescription && finalDescription[language] !== editingLab.description[language]) {
             const res = await translateContent({ text: tempLabDescription, targetLanguage: otherLang });
             finalDescription[otherLang] = res.translatedText;
         }
@@ -356,8 +365,8 @@ export function LabAdminView({
     setWeekLabId(labId);
     if (mode === 'edit' && week) {
       setEditingWeek(week);
-      setTempWeekTitle(week.title);
-      setTempWeekDescription(week.description);
+      setTempWeekTitle(getLocalizedText(week.title));
+      setTempWeekDescription(getLocalizedText(week.description));
       setTempWeekLanguage(week.language || 'cpp');
     } else {
       setEditingWeek(null);
@@ -368,16 +377,45 @@ export function LabAdminView({
     setShowWeekDialog(true);
   };
 
-  const handleConfirmWeekForm = () => {
+  const handleConfirmWeekForm = async () => {
     if (!weekLabId || !tempWeekTitle.trim() || !tempWeekDescription.trim()) {
       toast({ title: t('errorToast'), description: t('weekFieldsError'), variant: "destructive" });
       return;
     }
+    
+    let finalTitle = { en: "", th: "" };
+    let finalDescription = { en: "", th: "" };
+
+    const originalTitle = editingWeek ? editingWeek.title : undefined;
+    const originalDescription = editingWeek ? editingWeek.description : undefined;
+
+    finalTitle[language] = tempWeekTitle;
+    finalDescription[language] = tempWeekDescription;
+    
+    const otherLang = language === 'en' ? 'th' : 'en';
+
+    try {
+        if (tempWeekTitle && getLocalizedText(originalTitle) !== tempWeekTitle) {
+            const res = await translateContent({ text: tempWeekTitle, targetLanguage: otherLang });
+            finalTitle[otherLang] = res.translatedText;
+        } else if (originalTitle) {
+            finalTitle[otherLang] = getLocalizedText({en: originalTitle.en, th: originalTitle.th});
+        }
+        
+        if (tempWeekDescription && getLocalizedText(originalDescription) !== tempWeekDescription) {
+            const res = await translateContent({ text: tempWeekDescription, targetLanguage: otherLang });
+            finalDescription[otherLang] = res.translatedText;
+        } else if (originalDescription) {
+            finalDescription[otherLang] = getLocalizedText({en: originalDescription.en, th: originalDescription.th});
+        }
+    } catch (e) {
+        toast({ title: t('translationFailed'), variant: "destructive" });
+    }
 
     if (weekDialogMode === 'edit' && editingWeek) {
-      handleUpdateWeekInSemester(weekLabId, { ...editingWeek, title: tempWeekTitle, description: tempWeekDescription, language: tempWeekLanguage });
+      handleUpdateWeekInSemester(weekLabId, { ...editingWeek, title: finalTitle, description: finalDescription, language: tempWeekLanguage });
     } else {
-      handleAddWeekToSemester(weekLabId, { title: tempWeekTitle, description: tempWeekDescription, language: tempWeekLanguage });
+      handleAddWeekToSemester(weekLabId, { title: finalTitle, description: finalDescription, language: tempWeekLanguage });
     }
     setShowWeekDialog(false);
     setEditingWeek(null);
@@ -410,7 +448,7 @@ export function LabAdminView({
       setEditingTargetCode(targetCode);
       setTempTargetCode(targetCode.code);
       setProtectedTargetCode(targetCode.code);
-      setTempTargetCodeDescription(targetCode.description);
+      setTempTargetCodeDescription(getLocalizedText(targetCode.description));
       setTempEnforcedStatement(targetCode.enforcedStatement || 'none');
       setTempRequiredOutputSimilarity(targetCode.requiredOutputSimilarity || 95);
       setTempPoints(targetCode.points || 100);
@@ -468,7 +506,7 @@ export function LabAdminView({
     setTempTargetTestCases(newTestCases);
   };
 
-  const handleConfirmTargetCodeForm = () => {
+  const handleConfirmTargetCodeForm = async () => {
     if (typingMetrics.isBlocked) {
         toast({ title: t('errorToast'), description: t('submissionBlockedSecurity'), variant: "destructive" });
         return;
@@ -491,11 +529,27 @@ export function LabAdminView({
         return;
     }
     
+    let finalDescription = { en: "", th: "" };
+    const originalDescription = editingTargetCode ? editingTargetCode.description : undefined;
+    finalDescription[language] = tempTargetCodeDescription;
+    const otherLang = language === 'en' ? 'th' : 'en';
+
+    try {
+        if (tempTargetCodeDescription && getLocalizedText(originalDescription) !== tempTargetCodeDescription) {
+            const res = await translateContent({ text: tempTargetCodeDescription, targetLanguage: otherLang });
+            finalDescription[otherLang] = res.translatedText;
+        } else if (originalDescription) {
+            finalDescription[otherLang] = getLocalizedText(originalDescription);
+        }
+    } catch (e) {
+        toast({ title: t('translationFailed'), variant: "destructive" });
+    }
+
     const finalTestCases = tempTargetTestCases.map(input => ({ input })).filter(tc => tc.input.trim() !== '' || tempTargetTestCases.some(t => t.trim() !== ''));
 
     const targetCodeData: Omit<LabTargetCode, 'id'> = {
         code: tempTargetCode,
-        description: tempTargetCodeDescription,
+        description: finalDescription,
         enforcedStatement: tempEnforcedStatement === 'none' ? undefined : tempEnforcedStatement,
         requiredOutputSimilarity: isWebLanguageForTargetDialog ? 100 : Math.min(100, Math.max(0, requiredSim)),
         points: tempPoints,
@@ -523,15 +577,6 @@ export function LabAdminView({
   };
 
   const availableStatements = currentChallengeForTargetDialog ? languageSpecificStatements[currentChallengeForTargetDialog.language] : [];
-
-  const getLocalizedText = (text: any): string => {
-    if (!text) return '';
-    if (typeof text === 'string') return text;
-    if (text && typeof text === 'object') {
-      return text[language] || text.en || '';
-    }
-    return '';
-  };
 
   const viewableLabCourses = useMemo(() => {
     if (!currentUser || !allUsers) return [];
@@ -683,7 +728,7 @@ export function LabAdminView({
       <Dialog open={showWeekDialog} onOpenChange={setShowWeekDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{weekDialogMode === 'edit' ? t('editWeekTitle', { title: editingWeek?.title }) : t('addWeekTitle', { semester: getLocalizedText(labs.find(l=>l.id===weekLabId)?.title)})}</DialogTitle>
+            <DialogTitle>{weekDialogMode === 'edit' ? t('editWeekTitle', { title: getLocalizedText(editingWeek?.title) }) : t('addWeekTitle', { semester: getLocalizedText(labs.find(l=>l.id===weekLabId)?.title)})}</DialogTitle>
             <ModalDescription>{t('weekDialogDesc')}</ModalDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -719,7 +764,7 @@ export function LabAdminView({
       <Dialog open={showTargetCodeDialog} onOpenChange={setShowTargetCodeDialog}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{targetCodeDialogMode === 'edit' ? t('editTargetCodeTitle', { week: currentChallengeForTargetDialog?.title }) : t('addTargetCodeTitle', { week: currentChallengeForTargetDialog?.title })}</DialogTitle>
+            <DialogTitle>{targetCodeDialogMode === 'edit' ? t('editTargetCodeTitle', { week: getLocalizedText(currentChallengeForTargetDialog?.title) }) : t('addTargetCodeTitle', { week: getLocalizedText(currentChallengeForTargetDialog?.title) })}</DialogTitle>
             <ModalDescription>{t('targetCodeDialogDesc')}</ModalDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -880,8 +925,8 @@ export function LabAdminView({
                           <li key={challenge.id} className="p-2 border rounded-md bg-background">
                             <div className="flex justify-between items-start">
                               <div>
-                                <h5 className="font-medium text-sm">{challenge.title} <span className="text-xs text-muted-foreground">({challenge.language.toUpperCase()})</span></h5>
-                                <p className="text-xs text-muted-foreground">{challenge.description}</p>
+                                <h5 className="font-medium text-sm">{getLocalizedText(challenge.title)} <span className="text-xs text-muted-foreground">({challenge.language.toUpperCase()})</span></h5>
+                                <p className="text-xs text-muted-foreground">{getLocalizedText(challenge.description)}</p>
                               </div>
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="xs" onClick={() => openCloneWeekDialog(lab.id, challenge.id)} title="Clone Week"><CopyIcon className="h-3 w-3"/></Button>
@@ -889,7 +934,7 @@ export function LabAdminView({
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild><Button variant="ghost" size="xs" className="text-destructive hover:text-destructive"><Trash2 className="h-3 w-3"/></Button></AlertDialogTrigger>
                                   <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>{t('deleteWeekConfirmTitle', { title: challenge.title })}</AlertDialogTitle><AlertDialogDescription>{t('deleteActionUndo')}</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogHeader><AlertDialogTitle>{t('deleteWeekConfirmTitle', { title: getLocalizedText(challenge.title) })}</AlertDialogTitle><AlertDialogDescription>{t('deleteActionUndo')}</AlertDialogDescription></AlertDialogHeader>
                                     <AlertDialogFooter><AlertDialogCancel>{t('cancelButton')}</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteWeekFromSemester(lab.id, challenge.id)}>{t('confirmDelete')}</AlertDialogAction></AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
@@ -905,7 +950,7 @@ export function LabAdminView({
                                   {challenge.targetCodes.map(tc => (
                                       <li key={tc.id} className="text-xs p-1 border-l-2 border-primary/50 bg-muted/30 rounded-r-md flex justify-between items-center">
                                           <div className='flex-1 truncate'>
-                                              <span className="font-mono text-muted-foreground" title={tc.code}>{tc.description}</span>
+                                              <span className="font-mono text-muted-foreground" title={tc.code}>{getLocalizedText(tc.description)}</span>
                                                {tc.enforcedStatement && <span className="text-blue-600 ml-2 text-[10px] font-semibold flex items-center gap-1"><Code size={12}/> ({tc.enforcedStatement})</span>}
                                           </div>
                                           <div className="flex gap-0.5">
@@ -937,5 +982,7 @@ export function LabAdminView({
     </div>
   );
 }
+
+    
 
     
