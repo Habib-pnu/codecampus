@@ -1695,17 +1695,18 @@ export default function DashboardPage() {
 
     let totalNotifications = 0;
 
+    // --- For Lecturers / Admins ---
     if (['lecturer', 'admin', 'institution_admin'].includes(currentUser.role)) {
-      // 1. Pending join requests
+      // 1. Pending Join Requests (only for the actual class owner)
       classGroups.forEach(cg => {
-        if (cg.adminId === currentUser.id || currentUser.isAdmin) {
+        if (cg.adminId === currentUser.id) {
           totalNotifications += (cg.pendingJoinRequests || []).length;
         }
       });
 
-      // 2. Pending late submission requests
+      // 2. Pending Late Submission Requests (only for the actual class owner)
       classGroups.forEach(cg => {
-        if (cg.adminId === currentUser.id || currentUser.isAdmin) {
+        if (cg.adminId === currentUser.id) {
           (cg.assignedChallenges || []).forEach(ac => {
             Object.values(ac.studentProgress).forEach(progress => {
               Object.values(progress).forEach(attempt => {
@@ -1717,9 +1718,10 @@ export default function DashboardPage() {
           });
         }
       });
-      // 3. Unread lecturer/admin messages in assistance chats
+      
+      // 3. Unread lecturer/admin messages in assistance chats (only for the actual class owner)
        classGroups.forEach(cg => {
-        if (cg.adminId === currentUser.id || currentUser.isAdmin) {
+        if (cg.adminId === currentUser.id) {
           (cg.assistanceRequests || []).forEach(req => {
             if (req.status === 'open' && req.messages.length > 0) {
               const lastMessage = req.messages[req.messages.length - 1];
@@ -1730,8 +1732,11 @@ export default function DashboardPage() {
           });
         }
       });
+      
+      // 4. Admin support tickets are for global/inst admins
        adminSupportRequests.forEach(req => {
-        if (req.status === 'open' && req.messages.length > 0) {
+        const canView = currentUser.isAdmin || (currentUser.role === 'institution_admin' && req.requesterId && allUsers.find(u => u.id === req.requesterId)?.institutionId === currentUser.institutionId);
+        if (canView && req.status === 'open' && req.messages.length > 0) {
           const lastMessage = req.messages[req.messages.length - 1];
           if (lastMessage.senderId !== currentUser.id) {
             totalNotifications++;
@@ -1740,7 +1745,7 @@ export default function DashboardPage() {
       });
     }
 
-    // 4. Unread messages for students
+    // 5. Unread messages for students
     if (currentUser.role === 'student' || currentUser.role === 'normal') {
       classGroups.forEach(cg => {
         if ((currentUser.enrolledClassIds || []).includes(cg.id)) {
@@ -1758,7 +1763,7 @@ export default function DashboardPage() {
 
     setNotificationCount(totalNotifications);
 
-  }, [classGroups, adminSupportRequests, currentUser, setNotificationCount, isClient]);
+  }, [classGroups, adminSupportRequests, currentUser, setNotificationCount, isClient, allUsers]);
 
 
   if (!isClient || !currentUser) {
