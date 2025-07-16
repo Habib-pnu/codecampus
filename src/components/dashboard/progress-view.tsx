@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -22,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Editor from "@monaco-editor/react";
 import { cn } from "@/lib/utils";
 import { SkillAssessmentView } from "./skill-assessment-view";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 type ProgressViewProps = Pick<DashboardState, "userProgress" | "currentUser" | "exercises" | "allUsers" | "classGroups" | "labs" > &
@@ -125,12 +125,11 @@ export function ProgressView({
     allUsers,
     classGroups,
     labs,
-    handleApproveJoinRequest,
-    handleDenyJoinRequest,
 }: ProgressViewProps) {
   const { toast } = useToast();
   const { t, language } = useLanguage();
   const [viewingStudent, setViewingStudent] = React.useState<{student: UserType, classGroup: ClassGroup} | null>(null);
+  const [selectedClassId, setSelectedClassId] = React.useState<string | null>(null);
   
   const getLocalizedText = (text: string | LocalizedString | undefined): string => {
     if (!text) return '';
@@ -421,86 +420,110 @@ export function ProgressView({
 
       {/* Lecturer/Admin View */}
       {(currentUser?.role === 'lecturer' || currentUser?.isAdmin || currentUser?.role === 'institution_admin') && (() => {
-          const administeredClasses = classGroups.filter(cg => currentUser.isAdmin || cg.adminId === currentUser.id || (currentUser.role === 'institution_admin' && cg.institutionId === currentUser.institutionId));
+          const administeredClasses = [...classGroups.filter(cg => currentUser.isAdmin || cg.adminId === currentUser.id || (currentUser.role === 'institution_admin' && cg.institutionId === currentUser.institutionId))]
+              .sort((a, b) => {
+                  const statusOrder = { 'active': 1, 'pending': 2, 'finished': 3 };
+                  return (statusOrder[a.status] || 4) - (statusOrder[b.status] || 4);
+              });
+          
+          const selectedClass = administeredClasses.find(cg => cg.id === selectedClassId) || null;
+
+          if (administeredClasses.length === 0) {
+            return <p className="text-muted-foreground text-center py-4">{t('noClassesWithStudents')}</p>
+          }
+
+          const classStudents = selectedClass ? (selectedClass.members || [])
+              .filter(m => m.status === 'active')
+              .map(m => allUsers.find(u => u.id === m.userId))
+              .filter(Boolean) as UserType[] : [];
+
+          const totalPossibleLearnScore = selectedClass ? (selectedClass.assignedExercises || []).reduce((sum, as) => sum + (exercises.find(e => e.id === as.exerciseId)?.points || 0), 0) : 0;
+          
           return (
-             administeredClasses.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">{t('noClassesWithStudents')}</p>
-              ) : (
-                <div className="space-y-6">
-                  {administeredClasses.map(classGroup => {
-                    if (!classGroup) return null;
+             <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Select a Class to View</CardTitle>
+                        <CardDescription>Choose a class from the dropdown to see its progress summary.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Select onValueChange={setSelectedClassId} value={selectedClassId || undefined}>
+                            <SelectTrigger className="w-full md:w-1/2">
+                                <SelectValue placeholder="Select a class..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {administeredClasses.map(cg => (
+                                    <SelectItem key={cg.id} value={cg.id}>
+                                        {cg.name} <span className="text-xs text-muted-foreground capitalize ml-2">({cg.status})</span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </CardContent>
+                </Card>
 
-                    const classStudents = (classGroup.members || [])
-                      .filter(m => m.status === 'active')
-                      .map(m => allUsers.find(u => u.id === m.userId))
-                      .filter(Boolean) as UserType[];
-                    
-                    const totalPossibleLearnScore = (classGroup.assignedExercises || []).reduce((sum, as) => sum + (exercises.find(e => e.id === as.exerciseId)?.points || 0), 0);
+                {selectedClass && (
+                  <Card key={selectedClass.id} className="bg-muted/30">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start flex-wrap gap-2">
+                         <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg text-primary">{selectedClass.name}</CardTitle>
+                            <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs">
+                                    Code: <strong className="ml-1 select-all">{selectedClass.classCode}</strong>
+                                </Badge>
+                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleCopyClassCode(selectedClass.classCode)}><Copy size={12}/></Button>
+                            </div>
+                         </div>
+                        <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleExportClassToCSV(selectedClass)}
+                              className="ml-auto text-xs"
+                            >
+                              <Download className="mr-1 h-3 w-3" /> {t('exportToCsv')}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 pb-3 space-y-4">
+                      {classStudents.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Learn Score</TableHead>
+                                    <TableHead>Lab Progress</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {classStudents.map(student => {
+                                    const learnScoreForClass = (student.completedExercises || [])
+                                      .filter(ce => (selectedClass.assignedExercises || []).some(ae => ae.exerciseId === ce.exerciseId))
+                                      .reduce((sum, ce) => sum + (exercises.find(e => e.id === ce.exerciseId)?.points || 0), 0);
 
-                    return (
-                      <Card key={classGroup.id} className="bg-muted/30">
-                        <CardHeader className="pb-3">
-                          <div className="flex justify-between items-start flex-wrap gap-2">
-                             <div className="flex items-center gap-2">
-                                <CardTitle className="text-md text-primary">{classGroup.name}</CardTitle>
-                                <div className="flex items-center gap-1">
-                                    <Badge variant="secondary" className="text-xs">
-                                        Code: <strong className="ml-1 select-all">{classGroup.classCode}</strong>
-                                    </Badge>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleCopyClassCode(classGroup.classCode)}><Copy size={12}/></Button>
-                                </div>
-                             </div>
-                            <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleExportClassToCSV(classGroup)}
-                                  className="ml-auto text-xs"
-                                >
-                                  <Download className="mr-1 h-3 w-3" /> {t('exportToCsv')}
-                            </Button>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0 pb-3 space-y-4">
-                          {classStudents.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Learn Score</TableHead>
-                                        <TableHead>Lab Progress</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {classStudents.map(student => {
-                                        const learnScoreForClass = (student.completedExercises || [])
-                                          .filter(ce => (classGroup.assignedExercises || []).some(ae => ae.exerciseId === ce.exerciseId))
-                                          .reduce((sum, ce) => sum + (exercises.find(e => e.id === ce.exerciseId)?.points || 0), 0);
-
-                                        return (
-                                          <TableRow key={student.id}>
-                                            <TableCell className="font-medium">
-                                                {classGroup.members.find(m => m.userId === student.id)?.alias || student.fullName}
-                                            </TableCell>
-                                            <TableCell>{learnScoreForClass.toFixed(2)} / {totalPossibleLearnScore} pts</TableCell>
-                                            <TableCell>
-                                                <Button variant="outline" size="sm" onClick={() => setViewingStudent({student, classGroup})}>
-                                                    <Eye className="mr-2 h-4 w-4" /> View Submissions
-                                                </Button>
-                                            </TableCell>
-                                          </TableRow>
-                                        )
-                                    })}
-                                </TableBody>
-                            </Table>
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">{t('noStudentsEnrolledYet')}</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )
+                                    return (
+                                      <TableRow key={student.id}>
+                                        <TableCell className="font-medium">
+                                            {selectedClass.members.find(m => m.userId === student.id)?.alias || student.fullName}
+                                        </TableCell>
+                                        <TableCell>{learnScoreForClass.toFixed(2)} / {totalPossibleLearnScore} pts</TableCell>
+                                        <TableCell>
+                                            <Button variant="outline" size="sm" onClick={() => setViewingStudent({student, classGroup: selectedClass})}>
+                                                <Eye className="mr-2 h-4 w-4" /> View Submissions
+                                            </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">{t('noStudentsEnrolledYet')}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+             </div>
           );
       })()}
       
