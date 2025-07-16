@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Editor from "@monaco-editor/react";
 
 import type { DashboardState, DashboardActions } from '../types';
-import type { Lab, LabChallenge, LabTargetCode, CodeSnippet, SupportedLanguage, EnforcedStatement, User } from '@/types';
+import type { Lab, LabChallenge, LabTargetCode, CodeSnippet, SupportedLanguage, EnforcedStatement, User, ClassGroup } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -39,12 +39,12 @@ interface TypingMetrics {
 }
 
 export function LabAdminView({
-  labs, currentUser, savedCodes, allUsers,
+  labs, currentUser, savedCodes, allUsers, classGroups,
   handleAddLabSemester, handleUpdateLabSemester, handleDeleteLabSemester,
   handleAddWeekToSemester, handleUpdateWeekInSemester, handleDeleteWeekFromSemester,
   handleAddTargetCodeToWeek, handleUpdateTargetCodeInWeek, handleDeleteTargetCodeFromWeek,
   setActiveTab, handleCloneWeekToCourse
-}: Pick<DashboardState, "labs" | "currentUser" | "savedCodes" | "allUsers"> &
+}: Pick<DashboardState, "labs" | "currentUser" | "savedCodes" | "allUsers" | "classGroups"> &
   Pick<DashboardActions, 
     "handleAddLabSemester" | "handleUpdateLabSemester" | "handleDeleteLabSemester" | 
     "handleAddWeekToSemester" | "handleUpdateWeekInSemester" | "handleDeleteWeekFromSemester" |
@@ -75,6 +75,11 @@ export function LabAdminView({
   const [tempWeekTitle, setTempWeekTitle] = useState("");
   const [tempWeekDescription, setTempWeekDescription] = useState("");
   const [tempWeekLanguage, setTempWeekLanguage] = useState<SupportedLanguage>('cpp');
+  
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<'lab' | 'week' | null>(null);
+  const [itemToAssign, setItemToAssign] = useState<{lab: Lab, challenge?: LabChallenge} | null>(null);
+  const [classToAssignTo, setClassToAssignTo] = useState<string>("");
 
   const [showCloneWeekDialog, setShowCloneWeekDialog] = useState(false);
   const [weekToClone, setWeekToClone] = useState<{ labId: string; challengeId: string; } | null>(null);
@@ -111,6 +116,26 @@ export function LabAdminView({
     const lang = currentChallengeForTargetDialog?.language;
     return lang === 'html' || lang === 'javascript' || lang === 'react';
   }, [currentChallengeForTargetDialog]);
+  
+  const openAssignDialog = (item: {lab: Lab, challenge?: LabChallenge}) => {
+    setItemToAssign(item);
+    setShowAssignDialog(true);
+    setClassToAssignTo("");
+  };
+
+  const handleConfirmAssignment = () => {
+    if (!itemToAssign || !classToAssignTo) {
+        toast({ title: "Error", description: "Please select a class.", variant: "destructive" });
+        return;
+    }
+    
+    // Logic to navigate to lecturer panel
+    sessionStorage.setItem('selectedClassForLabManagement', classToAssignTo);
+    setActiveTab('lecturer-panel');
+    
+    setShowAssignDialog(false);
+  };
+
 
   const addSecurityAlert = useCallback((messageKey: string, params?: any) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -537,6 +562,34 @@ export function LabAdminView({
            <Button onClick={openCreateLabDialog} size="sm">{t('createCourseButton')}</Button>
         </CardContent>
       </Card>
+      
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Assign to Class</DialogTitle>
+                <ModalDescription>
+                    Select a class to assign '{getLocalizedText(itemToAssign?.challenge?.title) || getLocalizedText(itemToAssign?.lab.title)}' to.
+                </ModalDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Label htmlFor="class-select-for-assignment">Class</Label>
+                <Select value={classToAssignTo} onValueChange={setClassToAssignTo}>
+                    <SelectTrigger id="class-select-for-assignment">
+                        <SelectValue placeholder="Select a class..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {classGroups.filter(cg => cg.adminId === currentUser.id).map(cg => (
+                            <SelectItem key={cg.id} value={cg.id}>{cg.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <ModalDialogFooter>
+                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                <Button onClick={handleConfirmAssignment}>Go to Assign Panel</Button>
+            </ModalDialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showCreateLabDialog} onOpenChange={setShowCreateLabDialog}>
         <DialogContent>
@@ -800,7 +853,7 @@ export function LabAdminView({
                          <p className="text-sm text-muted-foreground mt-1">{getLocalizedText(lab.description)}</p>
                        </div>
                       <div className="flex gap-2 flex-wrap">
-                        <Button variant="outline" size="sm" onClick={() => setActiveTab('lecturer-panel')}>
+                        <Button variant="outline" size="sm" onClick={() => openAssignDialog({lab})}>
                             <ListTree className="mr-2 h-4 w-4"/>
                             {t('assignToClass')}
                         </Button>

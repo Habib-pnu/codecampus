@@ -71,7 +71,9 @@ export interface DashboardActions {
   handleAdminResetPassword: (userId: string) => void;
   handleToggleAdminStatus: (userId: string) => void;
   handleAdminDeleteUser: (userId: string) => void;
-
+  
+  handleApproveJoinRequest: (classId: string, studentId: string) => void;
+  handleDenyJoinRequest: (classId: string, studentId: string) => void;
   handleRequestToJoinClass: (classCode: string) => Promise<void>;
   handleUpdateClassExercises: (classId: string, newAssignedExercises: AssignedExerciseInfo[]) => void;
   handleLeaveClass: (classId: string) => Promise<void>;

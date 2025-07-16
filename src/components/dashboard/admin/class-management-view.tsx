@@ -50,7 +50,7 @@ type ClassManagementViewProps = Pick<DashboardState, "allUsers" | "classGroups" 
     "handleCreateCoupon" | "handleUpdateCoupon" | "handleDeleteCoupon" | "handleSimulatePayment" | "setPromptPayNumber" | "handleAssignWeeksToClass" |
     "handleUnassignWeekFromClass" | "handleUpdateAssignedWeekExpiry" | "handleApproveLateSubmission" | "setAllUsers" | "setInstitutions" |
     "handleSendAssistanceMessage" | "handleCloseAssistanceRequest" | "handleCreateAdminSupportRequest" | "handleSendAdminChatMessage" | "handleUpdateAdminSupportRequestStatus" |
-    "handleSendPublicChatMessage" | "handleCloneWeekToCourse"
+    "handleSendPublicChatMessage" | "handleCloneWeekToCourse" | "handleApproveJoinRequest" | "handleDenyJoinRequest"
   >;
 
 export function ClassManagementView({
@@ -64,7 +64,8 @@ export function ClassManagementView({
   handleSimulatePayment, setPromptPayNumber, handleAssignWeeksToClass,
   handleUnassignWeekFromClass, handleUpdateAssignedWeekExpiry, handleApproveLateSubmission,
   setAllUsers, setInstitutions, handleSendAssistanceMessage, handleCloseAssistanceRequest,
-  handleCreateAdminSupportRequest, handleSendAdminChatMessage, handleUpdateAdminSupportRequestStatus, handleSendPublicChatMessage, handleCloneWeekToCourse
+  handleCreateAdminSupportRequest, handleSendAdminChatMessage, handleUpdateAdminSupportRequestStatus, handleSendPublicChatMessage, handleCloneWeekToCourse,
+  handleApproveJoinRequest, handleDenyJoinRequest
 }: ClassManagementViewProps) {
   const { toast } = useToast();
   const { language, t } = useLanguage();
@@ -758,6 +759,22 @@ export function ClassManagementView({
     }
     return []; 
   }, [currentUser, allUsers, classGroups]);
+  
+  const allPendingRequests = useMemo(() => {
+    const requestsByClass: Record<string, { className: string; requests: any[] }> = {};
+    managedClasses.forEach(cg => {
+        if (cg.adminId === currentUser?.id) { // Only owner can approve
+            (cg.pendingJoinRequests || []).forEach(req => {
+                if (!requestsByClass[cg.id]) {
+                    requestsByClass[cg.id] = { className: cg.name, requests: [] };
+                }
+                requestsByClass[cg.id].requests.push(req);
+            });
+        }
+    });
+    return Object.values(requestsByClass);
+  }, [managedClasses, currentUser]);
+
 
   const renderClassCard = (cg: ClassGroup, isFinished: boolean) => {
     const institution = institutions.find(i => i.id === cg.institutionId);
@@ -1187,6 +1204,45 @@ export function ClassManagementView({
                     )}
                 </CardContent>
             </Card>
+            
+            {allPendingRequests.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-xl flex items-center gap-2 text-primary">
+                            <Bell className="h-6 w-6"/> Pending Approvals
+                        </CardTitle>
+                         <CardDescription>{t('approveStudentsPrompt')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Accordion type="multiple" className="w-full space-y-2">
+                            {allPendingRequests.map(({ className, requests }) => (
+                                <AccordionItem key={className} value={className} className="border rounded-md px-2">
+                                    <AccordionTrigger className="hover:no-underline">
+                                        <p className="font-semibold text-primary">{className} ({requests.length} requests)</p>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="space-y-2">
+                                            {requests.map(req => (
+                                                <div key={req.userId} className="flex justify-between items-center p-2 bg-muted/50 rounded">
+                                                    <div>
+                                                        <p className="font-medium">{req.fullName}</p>
+                                                        <p className="text-xs text-muted-foreground">User: {req.username} | SID: {req.studentId}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button size="sm" variant="destructive" onClick={() => handleDenyJoinRequest(req.classId, req.userId)}>{t('deny')}</Button>
+                                                        <Button size="sm" onClick={() => handleApproveJoinRequest(req.classId, req.userId)}>{t('approve')}</Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    </CardContent>
+                </Card>
+            )}
+
 
             {activeAndPendingClasses.length === 0 && finishedClasses.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">{t('noClassesYet')}</p>

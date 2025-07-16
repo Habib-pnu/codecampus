@@ -3,6 +3,14 @@
 import { ReactNode } from "react";
 import type { SkillAssessmentOutput } from "@/ai/types";
 
+export interface PendingJoinRequest {
+  userId: string;
+  fullName: string;
+  username: string;
+  studentId: string;
+  requestedAt: string;
+}
+
 export interface User {
   id: string;
   username: string; // ชื่อผู้ใช้
@@ -16,6 +24,7 @@ export interface User {
   completedExercises: { exerciseId: number; completedAt: string; }[];
   totalScore: number;
   enrolledClassIds: string[];
+  pendingClassRequests?: { classId: string; className: string, requestedAt: string}[];
   institutionId?: string; // Associated institution
   billingBalance?: number;
   lastBillingCycleDate?: string;
@@ -179,6 +188,7 @@ export interface ClassGroup {
   classCode: string;
   assignedExercises: AssignedExerciseInfo[];
   members: ClassMember[];
+  pendingJoinRequests: PendingJoinRequest[];
   assignedChallenges: AssignedChallengeInfo[]; // This is now for assigned weeks
   status: 'pending' | 'active' | 'finished';
   startedAt?: string;
