@@ -671,7 +671,7 @@ export function LabAdminView({
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             {(typingMetrics.warnings > 0 || securityAlerts.length > 0) && (
-              <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
+              <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50 text-red-900" : "border-yellow-500 bg-yellow-50 text-yellow-900")}>
                 <UIAlertTitle className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
                   {t('securityStatus')}

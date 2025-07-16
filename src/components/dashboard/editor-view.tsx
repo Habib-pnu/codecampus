@@ -8,23 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import Editor, { useMonaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
 import type { DashboardState, DashboardActions } from "./types";
-import type { CodeSnippet, Exercise, Lab, User, SupportedLanguage } from '@/types';
-import type { CodeAssistantOutput } from '@/ai/types';
-import { Play, Save, FileText, Trash2, PlusCircle, Pencil, BookOpenCheck, ChevronLeft, ChevronRight, Undo2, Redo2, RotateCw, Shield, AlertTriangle, Globe, CheckCircle, Bot, Sparkles, Bug, MessageCircleQuestion } from "lucide-react";
-import { cn } from "@/lib/utils";
+import type { CodeSnippet, Exercise, Lab, User } from '@/types';
+import { Play, Save, FileText, Trash2, PlusCircle, Pencil, BookOpenCheck, ChevronLeft, ChevronRight, Undo2, Redo2, RotateCw, Shield, AlertTriangle, Globe, CheckCircle } from "lucide-react";
+import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadIcon } from '@/components/icons/LoadIcon';
 import { Alert, AlertDescription as UIDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { useLanguage } from '@/context/language-context';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { assistWithCode } from '@/ai/flows/code-assistant-flow';
 
 interface FilePreparationResponse {
   success: boolean;
@@ -34,16 +31,17 @@ interface FilePreparationResponse {
   error?: string | null;
 }
 
-const getWebSocketUrl = () => {
-  if (typeof window === 'undefined') {
-    return 'ws://localhost:8080';
-  }
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const hostname = window.location.hostname;
-  return `${protocol}://${hostname}:8080`;
-};
+type EditorViewProps = Pick<DashboardState,
+  "code" | "codeTitle" | "currentSnippetId" |
+  "savedCodes" | "currentUser" | "labs" | "currentExercise" | "isCompiling"
+ > &
+  Pick<DashboardActions,
+  "setCode" | "setCodeTitle" | "setCurrentSnippetId" |
+  "handleSaveOrUpdateSnippet" | "handleNewSnippet" | "handleLoadCode" | "handleDeleteSnippet" | "handleRenameSnippetTitle" | "handleUseSnippetAsWeekTarget" | "handleSubmitExercise"
+  >;
 
-const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || getWebSocketUrl();
+const ITEMS_PER_PAGE = 10;
+const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8080';
 
 // Security Configuration
 const SECURITY_CONFIG = {
@@ -61,8 +59,6 @@ interface TypingMetrics {
   lastKeystroke: number;
 }
 
-const ITEMS_PER_PAGE = 5;
-
 export function EditorView({
   code, setCode,
   codeTitle, setCodeTitle,
@@ -75,8 +71,6 @@ export function EditorView({
   currentExercise,
   handleSubmitExercise,
   isCompiling,
-  isAwaitingAIResponse,
-  setIsAwaitingAIResponse
 }: EditorViewProps) {
 
   const monacoEditorRef = useRef<any>(null);
@@ -88,7 +82,6 @@ export function EditorView({
 
   const { toast } = useToast();
   const { t } = useLanguage();
-  const monaco = useMonaco();
 
   // Security state
   const [typingMetrics, setTypingMetrics] = useState<TypingMetrics>({
@@ -118,11 +111,8 @@ export function EditorView({
   const [snippetForLabTarget, setSnippetForLabTarget] = React.useState<CodeSnippet | null>(null);
   const [selectedLabIdForSnippetTarget, setSelectedLabIdForSnippetTarget] = React.useState<string>("");
   const [selectedChallengeIdForSnippetTarget, setSelectedChallengeIdForSnippetTarget] = React.useState<string>("");
+  const [similarityForSnippetTarget, setSimilarityForSnippetTarget] = React.useState<number>(100);
   const [descriptionForSnippetTarget, setDescriptionForSnippetTarget] = React.useState<string>("");
-  const [selectedCode, setSelectedCode] = useState("");
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
-  const [aiResponse, setAiResponse] = useState<CodeAssistantOutput | null>(null);
-
 
   const [showBrowsePopup, setShowBrowsePopup] = useState(false);
   const [browseContent, setBrowseContent] = useState("");
@@ -216,12 +206,6 @@ export function EditorView({
 
   const handleEditorMount = (editorInstance: any, monaco: any) => {
     monacoEditorRef.current = editorInstance;
-
-    editorInstance.onDidChangeCursorSelection((e: any) => {
-      const selectedText = editorInstance.getModel().getValueInRange(e.selection);
-      setSelectedCode(selectedText);
-    });
-
     // Disable copy/paste in Monaco Editor
     if (monaco) {
       const blockAction = (alertMsgKey: string) => {
@@ -653,6 +637,7 @@ export function EditorView({
     setSnippetForLabTarget(snippet);
     setSelectedLabIdForSnippetTarget("");
     setSelectedChallengeIdForSnippetTarget("");
+    setSimilarityForSnippetTarget(100);
     setDescriptionForSnippetTarget(snippet.title.replace(/\.(cpp|py|html|js|jsx|tsx)$/, ""));
     setIsAddToLabModalOpen(true);
   };
@@ -667,7 +652,7 @@ export function EditorView({
       snippet: snippetForLabTarget,
       labId: selectedLabIdForSnippetTarget,
       challengeId: selectedChallengeIdForSnippetTarget,
-      points: 100,
+      points: 100, // Default points, can be adjusted
       targetDescription: descriptionForSnippetTarget.trim() || snippetForLabTarget.title.replace(/\.(cpp|py|html|js|jsx|tsx)$/, ""),
     });
     setIsAddToLabModalOpen(false);
@@ -738,44 +723,13 @@ export function EditorView({
 
   const isExerciseActive = currentExercise !== null;
   const isAlreadyCompleted = isExerciseActive && currentUser?.completedExercises.some(e => e.exerciseId === currentExercise.id);
-  
-  const handleAiRequest = async (requestType: 'explain' | 'suggest_improvement' | 'find_bugs') => {
-    if (!selectedCode.trim()) {
-        toast({ title: "No Code Selected", description: "Please select a piece of code in the editor first.", variant: "destructive" });
-        return;
-    }
-    if (!currentUser) {
-        toast({ title: "Login Required", description: "You must be logged in to use the AI assistant.", variant: "destructive" });
-        return;
-    }
-
-    setIsAwaitingAIResponse(true);
-    setAiResponse(null); // Clear previous response
-    setIsAIAssistantOpen(true); // Open the dialog to show loading state
-
-    try {
-        const response = await assistWithCode({
-            code: protectedCode,
-            selectedCode: selectedCode,
-            language: editorLanguage,
-            requestType: requestType,
-        });
-        setAiResponse(response);
-    } catch (e: any) {
-        console.error("AI Assistant Error:", e);
-        toast({ title: "AI Assistant Error", description: e.message || "Failed to get a response from the AI.", variant: "destructive" });
-        setIsAIAssistantOpen(false); // Close dialog on error
-    } finally {
-        setIsAwaitingAIResponse(false);
-    }
-  };
 
 
   return (
     <div className="p-0 h-full flex flex-col gap-4">
       {/* Security Status Alert */}
       {(typingMetrics.warnings > 0 || securityAlerts.length > 0) && (
-        <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50" : "border-yellow-500 bg-yellow-50")}>
+        <Alert className={cn("mb-4", typingMetrics.isBlocked ? "border-red-500 bg-red-50 text-red-900" : "border-yellow-500 bg-yellow-50 text-yellow-900")}>
           <UIAlertTitle className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             {t('securityStatus')}
@@ -783,11 +737,11 @@ export function EditorView({
           <UIDescription>
             <p>{t('warnings', { count: typingMetrics.warnings })} {typingMetrics.isBlocked && `- ${t('editorLocked')}`}</p>
             {securityAlerts.length > 0 && (
-              <ol className="text-xs mt-2 space-y-1 list-decimal list-inside font-mono">
+                <ol className="text-xs mt-2 space-y-1 list-decimal list-inside font-mono">
                 {[...new Set(securityAlerts.slice(-2))].map((alert, i) => (
-                  <li key={i}>{alert}</li>
+                    <li key={i}>{alert}</li>
                 ))}
-              </ol>
+                </ol>
             )}
           </UIDescription>
         </Alert>
@@ -803,26 +757,6 @@ export function EditorView({
               )}
             </CardTitle>
             <div className="flex gap-2">
-               <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8" disabled={!selectedCode.trim() || isAwaitingAIResponse} title="AI Assistant">
-                      <Bot className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-1">
-                      <div className="flex flex-col gap-1">
-                          <Button variant="ghost" className="justify-start" onClick={() => handleAiRequest('explain')}>
-                            <MessageCircleQuestion className="mr-2 h-4 w-4" /> Explain Code
-                          </Button>
-                          <Button variant="ghost" className="justify-start" onClick={() => handleAiRequest('suggest_improvement')}>
-                              <Sparkles className="mr-2 h-4 w-4" /> Suggest Improvement
-                          </Button>
-                          <Button variant="ghost" className="justify-start" onClick={() => handleAiRequest('find_bugs')}>
-                              <Bug className="mr-2 h-4 w-4" /> Find Bugs
-                          </Button>
-                      </div>
-                  </PopoverContent>
-              </Popover>
               <Button
                 variant="outline"
                 size="icon"
@@ -927,53 +861,6 @@ export function EditorView({
           </div>
         </CardHeader>
       </Card>
-      
-      <Dialog open={isAIAssistantOpen} onOpenChange={setIsAIAssistantOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Bot /> AI Code Assistant</DialogTitle>
-            <DialogDescription>Review the AI's analysis of your selected code.</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto pr-4 -mr-2 space-y-4">
-            {isAwaitingAIResponse && (
-                <div className="flex items-center justify-center p-8">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <div className="h-5 w-5 border-2 border-transparent border-t-primary rounded-full animate-spin" />
-                        <span>Thinking...</span>
-                    </div>
-                </div>
-            )}
-            {aiResponse && (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader><CardTitle className="text-base">Explanation</CardTitle></CardHeader>
-                    <CardContent><p className="text-sm">{aiResponse.response}</p></CardContent>
-                  </Card>
-                  {aiResponse.suggestedCode && (
-                      <Card>
-                        <CardHeader><CardTitle className="text-base">Suggested Code</CardTitle></CardHeader>
-                        <CardContent>
-                          <div className="h-64 border rounded-md overflow-hidden bg-[#1e1e1e]">
-                             <Editor
-                                height="100%"
-                                language={editorLanguage}
-                                theme="vs-dark"
-                                value={aiResponse.suggestedCode}
-                                options={{ readOnly: true, fontSize: 14, minimap: { enabled: false } }}
-                              />
-                          </div>
-                        </CardContent>
-                      </Card>
-                  )}
-                </div>
-            )}
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAIAssistantOpen(false)}>Close</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
 
       <Dialog open={isTerminalPopupOpen} onOpenChange={(open) => { 
         if (!open) closeTerminalPopup(); 
@@ -1069,7 +956,7 @@ export function EditorView({
                 <SelectTrigger id="lab-select-for-target"><SelectValue placeholder={t('selectLabPlaceholder')} /></SelectTrigger>
                 <SelectContent>
                   {availableLabTemplates.map(lab => (
-                    <SelectItem key={lab.id} value={lab.id}>{typeof lab.title === 'string' ? lab.title : lab.title.en} {lab.scope === 'global' && <span className="text-xs text-muted-foreground">(Global)</span>}</SelectItem>
+                    <SelectItem key={lab.id} value={lab.id}>{lab.title.en} {lab.scope === 'global' && <span className="text-xs text-muted-foreground">(Global)</span>}</SelectItem>
                   ))}
                   {availableLabTemplates.length === 0 && <div className="p-2 text-sm text-muted-foreground text-center">{t('noLabTemplates')}</div>}
                 </SelectContent>
