@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
@@ -1404,7 +1405,15 @@ function useDashboardData() {
       problemContext,
       status: 'open',
       createdAt: new Date().toISOString(),
-      messages: [],
+      messages: [
+        {
+          id: `msg-${Date.now()}`,
+          sender: 'student',
+          senderId: currentUser.id,
+          text: problemContext,
+          timestamp: new Date().toISOString(),
+        },
+      ],
     };
 
     setClassGroups(prev => prev.map(cg => {
