@@ -384,7 +384,7 @@ export function ClassManagementView({
   };
 
   const confirmAdminPasswordReset = (userId: string) => {
-    handleAdminPasswordReset(userId);
+    handleAdminResetPassword(userId);
   };
 
   const confirmAdminDeleteUser = (userId: string) => {

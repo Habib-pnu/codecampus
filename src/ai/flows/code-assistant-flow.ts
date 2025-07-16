@@ -42,11 +42,25 @@ const codeAssistantFlow = ai.defineFlow(
     outputSchema: CodeAssistantOutputSchema,
   },
   async (input) => {
-    const { output } = await assistantPrompt(input);
-    if (!output) {
-      throw new Error('AI failed to generate a response for the code assistance request.');
+    try {
+      const { output } = await assistantPrompt(input);
+      if (!output) {
+        throw new Error('AI failed to generate a response for the code assistance request.');
+      }
+      return output;
+    } catch (e: any) {
+      console.error(`[code-assistant-flow] Error: ${e.message}`, e);
+      // Create a more user-friendly error to send back to the client
+      const friendlyError = e.message.includes("overloaded") 
+        ? "The AI model is currently overloaded. Please try again in a few moments."
+        : "An unexpected error occurred while contacting the AI. Please try again.";
+      
+      // We must return a valid CodeAssistantOutput, so we populate the response field.
+      return {
+        response: `Error: ${friendlyError}`,
+        suggestedCode: ''
+      };
     }
-    return output;
   }
 );
 
