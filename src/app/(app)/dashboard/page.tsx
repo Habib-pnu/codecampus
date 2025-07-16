@@ -95,7 +95,6 @@ function useDashboardData() {
   const [labAssignments, setLabAssignments] = useState<LabAssignment[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [savedCodes, setSavedCodes] = useState<CodeSnippet[]>([]);
-  const [userProgress] = useState<ProgressDataPoint[]>(mockProgressData);
   const [promptPayNumber, setPromptPayNumber] = useState<string>('0954385969'); 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [transactions, setTransactions] = useState<BillingTransaction[]>([]);
@@ -122,14 +121,6 @@ function useDashboardData() {
 
   const editorTabContentRef = useRef<HTMLDivElement>(null);
 
-  const editorLanguage = useMemo((): SupportedLanguage => {
-    if (codeTitle.endsWith('.py')) return 'python';
-    if (codeTitle.endsWith('.html')) return 'html';
-    if (codeTitle.endsWith('.js') || codeTitle.endsWith('.jsx')) return 'javascript';
-    if (codeTitle.endsWith('.ts') || codeTitle.endsWith('.tsx')) return 'react';
-    return 'cpp';
-  }, [codeTitle]);
-  
   const getLocalizedText = useCallback((text: string | LocalizedString | undefined): string => {
     if (!text) return '';
     const lang = isClient ? (localStorage.getItem('codecampus_language') as 'en' | 'th' || 'th') : 'th';
@@ -140,6 +131,14 @@ function useDashboardData() {
     return '';
   }, [isClient]);
 
+  const editorLanguage = useMemo((): SupportedLanguage => {
+    if (codeTitle.endsWith('.py')) return 'python';
+    if (codeTitle.endsWith('.html')) return 'html';
+    if (codeTitle.endsWith('.js') || codeTitle.endsWith('.jsx')) return 'javascript';
+    if (codeTitle.endsWith('.ts') || codeTitle.endsWith('.tsx')) return 'react';
+    return 'cpp';
+  }, [codeTitle]);
+  
   const tabItemsConfig: TabItemConfig[] = useMemo(() => [
     { value: "admin", label: "Admin", Icon: Shield, roles: ['global_admin'] },
     { value: "progress", label: t('tabProgress'), Icon: BarChart3, roles: ['student', 'lecturer', 'institution_admin'] },
@@ -1646,7 +1645,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
   
   return {
     dashboardState: {
-      currentUser, allUsers, code, isCompiling, codeTitle, savedCodes, currentSnippetId, exercises, currentExercise, userProgress, classGroups, labs, labAssignments, isNewSnippetModalOpen, newSnippetDialogInput, activeTab, institutions, promptPayNumber, coupons, transactions, showJoinClassModal, joinClassCode, newSnippetLanguage, showConfirmOverwriteSnippetDialog, overwriteDialogDetails, editorTabContentRef, editorLanguage, availableTabs, isClient, isAwaitingAIResponse, adminSupportRequests, isMobile
+      currentUser, allUsers, code, isCompiling, codeTitle, savedCodes, currentSnippetId, exercises, currentExercise, classGroups, labs, labAssignments, isNewSnippetModalOpen, newSnippetDialogInput, activeTab, institutions, promptPayNumber, coupons, transactions, showJoinClassModal, joinClassCode, newSnippetLanguage, showConfirmOverwriteSnippetDialog, overwriteDialogDetails, editorTabContentRef, editorLanguage, availableTabs, isClient, isAwaitingAIResponse, adminSupportRequests, isMobile
     },
     dashboardActions: { ...dashboardActions, setIsAwaitingAIResponse },
     t
