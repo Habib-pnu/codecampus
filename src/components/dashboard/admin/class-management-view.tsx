@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -81,6 +80,8 @@ export function ClassManagementView({
   const [showManageExercisesModal, setShowManageExercisesModal] = useState(false);
   const [classToManageExercises, setClassToManageExercises] = useState<ClassGroup | null>(null);
   const [tempAssignedExercises, setTempAssignedExercises] = useState<Array<AssignedExerciseInfo & { isAssigned: boolean }>>([]);
+  const [summarySelectedClassId, setSummarySelectedClassId] = useState<string | 'all'>('all');
+
 
   // Unified Lab Management State
   const [classIdForLabManagement, setClassIdForLabManagement] = useState<string | null>(null);
@@ -670,8 +671,13 @@ export function ClassManagementView({
   });
 
   const lecturerStats = useMemo(() => {
+    let classesToSummarize = managedClasses.filter(cg => cg.status === 'active');
+    if (summarySelectedClassId !== 'all') {
+      classesToSummarize = managedClasses.filter(cg => cg.id === summarySelectedClassId);
+    }
+    
     const studentSet = new Set<string>();
-    managedClasses.forEach(cg => {
+    classesToSummarize.forEach(cg => {
         (cg.members || []).forEach(member => {
             if(member.status === 'active') studentSet.add(member.userId)
         });
@@ -709,7 +715,7 @@ export function ClassManagementView({
         totalLearnPoints += studentLearnScore;
         totalExercisesCompleted += (student.completedExercises || []).length;
       
-        managedClasses.forEach(cg => {
+        classesToSummarize.forEach(cg => {
             if ((cg.members || []).some(m => m.userId === student.id)) {
                 (cg.assignedChallenges || []).forEach(ac => {
                     const progress = ac.studentProgress?.[student.id];
@@ -727,7 +733,7 @@ export function ClassManagementView({
       avgLabScore: students.length > 0 ? totalLabScore / students.length : 0,
       totalExercisesCompleted,
     };
-  }, [managedClasses, allUsers, currentUser, exercises]);
+  }, [managedClasses, allUsers, currentUser, exercises, summarySelectedClassId]);
 
   const managedClassesSorted = [...managedClasses].sort((a, b) => {
     const statusOrder: Record<ClassGroup['status'], number> = { active: 0, pending: 1, finished: 2 };
@@ -1148,6 +1154,21 @@ export function ClassManagementView({
                 <CardTitle className="text-2xl flex items-center gap-2"><Users className="h-6 w-6 text-primary" /> {t('lecturerGlobalSummaryTitle')}</CardTitle>
                 <CardDescription className="text-sm text-muted-foreground mt-1">{t('lecturerGlobalSummaryDesc')}</CardDescription>
             </div>
+            <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                <Select value={summarySelectedClassId} onValueChange={setSummarySelectedClassId}>
+                    <SelectTrigger className="w-full sm:w-[280px]">
+                        <SelectValue placeholder="Select a class to summarize..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Active Classes</SelectItem>
+                        {managedClasses.map(cg => (
+                            <SelectItem key={cg.id} value={cg.id}>{cg.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        </CardHeader>
+        <CardContent>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                 <Card className="p-3">
                     <h3 className="text-xs font-medium text-muted-foreground">{t('totalStudentsTaught')}</h3>
@@ -1166,7 +1187,7 @@ export function ClassManagementView({
                     <p className="text-lg font-bold text-foreground">{lecturerStats.totalExercisesCompleted}</p>
                 </Card>
             </div>
-        </CardHeader>
+        </CardContent>
       </Card>
       
       <div className="md:hidden mb-4">
