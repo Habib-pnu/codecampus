@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
@@ -1718,7 +1717,7 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-8 flex flex-col">
         {currentUser && currentUser.role === 'normal' && !(currentUser.enrolledClassIds || []).length && (
           <div className="mb-4 p-4 border border-primary/50 rounded-lg bg-primary/10 text-center">
-            <p className="text-sm text-primary-foreground">{t('dashboardJoinClassPrompt')}</p>
+            <p className="text-sm text-primary">{t('dashboardJoinClassPrompt')}</p>
             <Button onClick={() => dashboardActions.setShowJoinClassModal(true)} className="mt-2" variant="outline">
               <LogInIcon className="mr-2 h-4 w-4"/> {t('dashboardJoinClassButton')}
             </Button>
