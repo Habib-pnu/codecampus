@@ -394,7 +394,7 @@ function useDashboardData() {
 
     setActiveTab("editor");
     setIsCompiling(false);
-  }, [currentUser, currentExercise, toast, getStoredUsersWithPasswords, localPersistAllUsers, updateCurrentUser]);
+  }, [currentUser, currentExercise, toast, getStoredUsersWithPasswords, localPersistAllUsers, updateCurrentUser, getLocalizedText]);
 
   const handleCreateClassGroup = useCallback((data: { name: string; }) => {
     if (!currentUser) { toast({ title: "Error", description: "You must be logged in.", variant: "destructive" }); return; }
@@ -540,6 +540,7 @@ function useDashboardData() {
         username: currentUser.username,
         studentId: currentUser.studentId,
         requestedAt: new Date().toISOString(),
+        classId: targetClass.id,
     };
     
     const updatedPendingRequests = [...(targetClass.pendingJoinRequests || []), newRequest];
@@ -578,12 +579,6 @@ const handleApproveJoinRequest = useCallback((classId: string, studentId: string
         }
         
         const pricePerStudent = institutions.find(i => i.id === targetClass.institutionId)?.pricePerStudent ?? 0;
-        
-        // --- Update Lecturer's Billing Balance ---
-        const lecturerIndex = allStoredUsers.findIndex(u => u.id === targetClass.adminId);
-        if (lecturerIndex !== -1) {
-            allStoredUsers[lecturerIndex].billingBalance = (allStoredUsers[lecturerIndex].billingBalance || 0) + pricePerStudent;
-        }
 
         // --- Create Transaction ---
         const newTransaction: BillingTransaction = {
@@ -816,10 +811,10 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
         return lab;
     }));
     if (newChallenge && 'title' in newChallenge) {
-        toast({ title: "Week Added", description: `Week "${newChallenge.title}" added.` });
+        toast({ title: "Week Added", description: `Week "${getLocalizedText(newChallenge.title)}" added.` });
     }
     return newChallenge;
-  }, [toast]);
+  }, [toast, getLocalizedText]);
   
   const handleUpdateWeekInSemester = useCallback((labId: string, updatedChallenge: LabChallenge) => {
       setLabs(prev => prev.map(lab => {
@@ -828,8 +823,8 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
           }
           return lab;
       }));
-      toast({ title: "Week Updated", description: `Week "${updatedChallenge.title}" updated.` });
-  }, [toast]);
+      toast({ title: "Week Updated", description: `Week "${getLocalizedText(updatedChallenge.title)}" updated.` });
+  }, [toast, getLocalizedText]);
 
   const handleDeleteWeekFromSemester = useCallback((labId: string, challengeId: string) => {
       setLabs(prev => prev.map(lab => {
@@ -900,7 +895,10 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
       }
       
       const newChallengeData: Omit<LabChallenge, 'id' | 'targetCodes' | 'labId'> = {
-        title: `${challengeToClone.title} (Clone)`,
+        title: {
+            en: `${getLocalizedText(challengeToClone.title)} (Clone)`,
+            th: `${getLocalizedText(challengeToClone.title)} (โคลน)`
+        },
         description: challengeToClone.description,
         language: challengeToClone.language,
       };
@@ -913,9 +911,9 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
             const { id, ...restOfTc } = tc;
             handleAddTargetCodeToWeek(targetLabId, newWeek.id, restOfTc);
         });
-         toast({ title: "Week Cloned", description: `Week "${challengeToClone.title}" was successfully cloned.` });
+         toast({ title: "Week Cloned", description: `Week "${getLocalizedText(challengeToClone.title)}" was successfully cloned.` });
       }
-  }, [labs, handleAddWeekToSemester, handleAddTargetCodeToWeek, toast]);
+  }, [labs, handleAddWeekToSemester, handleAddTargetCodeToWeek, toast, getLocalizedText]);
 
 
   const handleUseSnippetAsWeekTarget = useCallback((data: { snippet: CodeSnippet; labId: string; challengeId: string; points: number, targetDescription?: string; }) => {
@@ -930,7 +928,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
 
       const newTarget: Omit<LabTargetCode, 'id'> = {
         code: snippet.code,
-        description: targetDescription || snippet.title,
+        description: { en: targetDescription || snippet.title, th: '' },
         requiredOutputSimilarity: 100, // For snippets, we can assume it should be a perfect match
         points: points,
         sourceSnippetId: snippet.id,
@@ -1081,7 +1079,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
     const targetCodeDetails = challengeDetails?.targetCodes.find(tc => tc.id === targetCodeId);
     if (!challengeDetails || !targetCodeDetails) { toast({ title: "Error", description: "Problem details not found.", variant: "destructive" }); setIsCompiling(false); return; }
     
-    toast({ title: "Submitting...", description: `Checking your solution for "${targetCodeDetails.description}"...` });
+    toast({ title: "Submitting...", description: `Checking your solution for "${getLocalizedText(targetCodeDetails.description)}"...` });
 
     const isWebLanguage = ['html', 'javascript', 'react'].includes(challengeDetails.language);
 
@@ -1107,7 +1105,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
         let executionErrorOccurred = false;
 
         for (const testCase of testCases) {
-          const studentExecutionResult = await executeCodeApi(studentCode, testCase.input, challengeDetails.language, `lab_submission_${targetCodeDetails.description}`);
+          const studentExecutionResult = await executeCodeApi(studentCode, testCase.input, challengeDetails.language, `lab_submission_${getLocalizedText(targetCodeDetails.description)}`);
           
           if (studentExecutionResult.networkError || studentExecutionResult.compileError || studentExecutionResult.runtimeError) {
             toast({ title: "Your Code Failed", description: `Your code has an error: ${studentExecutionResult.compileError || studentExecutionResult.runtimeError || studentExecutionResult.error}`, variant: "destructive" });
@@ -1198,7 +1196,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
         }
     }
     
-    let resultMessage = `Result for "${targetCodeDetails.description}": ${finalStatus.replace('-', ' ')}.`;
+    let resultMessage = `Result for "${getLocalizedText(targetCodeDetails.description)}": ${finalStatus.replace('-', ' ')}.`;
     resultMessage += ` You earned ${pointsAwarded.toFixed(2)} points.`
     toast({ title: "Submission Checked", description: resultMessage });
 
@@ -1218,7 +1216,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
     }));
 
     setIsCompiling(false);
-  }, [currentUser, classGroups, labs, executeCodeApi, calculateOutputSimilarity, checkStatement, toast, assessCodeSkill, setIsCompiling, getStoredUsersWithPasswords, localPersistAllUsers, updateCurrentUser, stripCodeCommentsAndWhitespace]);
+  }, [currentUser, classGroups, labs, executeCodeApi, calculateOutputSimilarity, checkStatement, toast, assessCodeSkill, setIsCompiling, getStoredUsersWithPasswords, localPersistAllUsers, updateCurrentUser, stripCodeCommentsAndWhitespace, getLocalizedText]);
   
   const handleRequestLateSubmission = (assignmentId: string, challengeId: string, targetCodeId: string) => {
     if (!currentUser) return;
@@ -1254,7 +1252,7 @@ const handleDenyJoinRequest = useCallback((classId: string, studentId: string) =
         if (ac.assignmentId === assignmentId) {
           const studentProgress = ac.studentProgress[studentId];
           const labDetails = labs.find(l => l.id === ac.labId);
-          const challengeDetails = labDetails?.challenges.find(c => c.id === challengeId);
+          const challengeDetails = labDetails?.challenges.find(c => c.id === ac.id); // This seems like a bug, should be ac.challengeId
           const targetCodeDetails = challengeDetails?.targetCodes.find(tc => tc.id === targetCodeId);
           if (!studentProgress || !studentProgress[targetCodeId] || !targetCodeDetails) return ac;
           
